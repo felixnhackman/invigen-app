@@ -29,28 +29,19 @@ import hero from "../assets/hero.png";
 const HomePage = ({ setCurrentPage = () => { } }) => {
     const [currentFlyer, setCurrentFlyer] = useState(0);
 
-    // Add your flyer images here - replace with actual image paths
     const flyers = [
         {
-            // title: "Invoice Generator Launch",
-            // description: "Introducing our professional invoice generation tool",
-            image: invigenmain // Replace with actual path
+
+            image: invigenmain
         },
         {
-            // title: "Feature Spotlight",
-            // description: "Discover the power of automated invoicing",
-            image: December // Replace with actual path
+            image: December
         },
         {
-            // title: "Business Solutions",
-            // description: "Tailored for modern businesses",
-            image: Post// Replace with actual path
+
+            image: Post
         },
-        // {
-        //     // title: "Special Promotion",
-        //     // description: "Get started with Invigen today",
-        //     image: "/path/to/flyer4.jpg" // Replace with actual path
-        // }
+
     ];
 
     const nextFlyer = () => {
