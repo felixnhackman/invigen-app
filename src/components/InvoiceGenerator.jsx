@@ -8,17 +8,23 @@ import {
     StyleSheet,
     PDFDownloadLink,
     PDFViewer,
-    pdf
+    pdf,
+    Font
 } from "@react-pdf/renderer";
 import { Plus, Trash2, Download, ArrowLeft, ArrowRight, Send, Mail, User, Building2, CheckCircle, Phone as PhoneIcon, FileText } from 'lucide-react';
 import hero from '../assets/hero.png';
 import logo2 from '../assets/logo2.png';
-import InvoiceDownloadPage from "./InvoiceDownload";
-
+import PoppinsBold from "../fonts/Poppins-Bold.ttf";
+import PoppinsRegular from "../fonts/Poppins-Regular.ttf";
+import PoppinsSemiBold from "../fonts/Poppins-SemiBold.ttf";
+import NotoSansBold from "../fonts/NotoSans-Bold.ttf";
 
 import emailjs from '@emailjs/browser';
 const SERVICE_ID = 'invigen_email_service';
-const TEMPLATE_ID = 'template_ygm8pjo';
+// Renamed INVOICE_TEMPLATE_ID for clarity
+const INVOICE_TEMPLATE_ID = 'template_ygm8pjo';
+// New template ID for the user feedback email
+const FEEDBACK_TEMPLATE_ID = 'feedback_invigen';
 const PUBLIC_KEY = 'IP5q2YStka3oDD-zQ';
 
 const getBase64Image = async (url) => {
@@ -38,11 +44,32 @@ const getBase64Image = async (url) => {
     }
 };
 
+Font.register({
+    family: "Poppins",
+    fonts: [
+        {
+            src: PoppinsRegular,
+            fontWeight: "normal",
+        },
+        {
+            src: PoppinsBold,
+            fontWeight: "bold",
+        },
+    ],
+});
+
+// FIX: Register a comprehensive font (Noto Sans) for currency symbols like Cedi (₵)
+Font.register({
+    family: "Noto Sans",
+    src: NotoSansBold,
+});
+
 const styles = StyleSheet.create({
     page: {
         padding: 40,
         backgroundColor: "#ffffff",
-        fontFamily: "Helvetica",
+        fontFamily: "Poppins",
+        letterSpacing: -0.5,
     },
     headerSection: {
         flexDirection: "row",
@@ -127,10 +154,11 @@ const styles = StyleSheet.create({
     },
     col1: { width: "50%", textAlign: "left", padding: 8, fontSize: 10, color: "#1e293b" },
     col2: { width: "15%", textAlign: "center", padding: 8, fontSize: 10, color: "#1e293b" },
-    col3: { width: "15%", textAlign: "right", padding: 8, fontSize: 10, color: "#1e293b" },
-    col4: { width: "20%", textAlign: "right", padding: 8, fontSize: 10, color: "#1e293b" },
+    // FIX: Apply Noto Sans to currency columns to support special symbols
+    col3: { width: "15%", textAlign: "right", padding: 8, fontSize: 10, color: "#1e293b", fontFamily: "Noto Sans" },
+    col4: { width: "20%", textAlign: "right", padding: 8, fontSize: 10, color: "#1e293b", fontFamily: "Noto Sans" },
     summary: {
-        marginTop: 20,
+        marginTop: 30,
         width: "100%",
         alignItems: "flex-end",
     },
@@ -140,8 +168,9 @@ const styles = StyleSheet.create({
         marginBottom: 6,
     },
     summaryLabel: { width: 90, fontSize: 11, fontWeight: "bold", color: "#475569" },
-    summaryValue: { width: 80, fontSize: 11, textAlign: "right", color: "#1e293b" },
-    balanceDue: { fontSize: 14, fontWeight: "bold", color: "#1e293b" },
+    // FIX: Apply Noto Sans to summary values
+    summaryValue: { width: 80, fontSize: 11, textAlign: "right", color: "#1e293b", fontFamily: "Noto Sans" },
+    balanceDue: { fontSize: 14, fontWeight: "bold", color: "#1e293b", fontFamily: "Noto Sans" },
     noteSection: {
         marginTop: 25,
         paddingTop: 15,
@@ -152,7 +181,14 @@ const styles = StyleSheet.create({
     noteText: { fontSize: 10, color: "#64748b", lineHeight: 1.5 },
 });
 
-const formatCurrency = (amount) => `$${parseFloat(amount || 0).toFixed(2)}`;
+const formatCurrency = (amount, currencyCode = "USD") => {
+    const currencies = {
+        USD: "$", EUR: "€", GBP: "£", GHS: "₵", NGN: "₦",
+        ZAR: "R", JPY: "¥", CNY: "¥", CAD: "C$", AUD: "A$"
+    };
+    const symbol = currencies[currencyCode] || "$";
+    return `${symbol}${parseFloat(amount || 0).toFixed(2)}`;
+};
 
 const InvoiceDocument = ({ formData, calculateTotal, calculateBalance, logoSrc }) => (
     <Document>
@@ -190,8 +226,8 @@ const InvoiceDocument = ({ formData, calculateTotal, calculateBalance, logoSrc }
                     <View key={idx} style={styles.tableRow}>
                         <Text style={styles.col1}>{item.name}</Text>
                         <Text style={styles.col2}>{item.quantity}</Text>
-                        <Text style={styles.col3}>{formatCurrency(item.price)}</Text>
-                        <Text style={styles.col4}>{formatCurrency(item.quantity * item.price)}</Text>
+                        <Text style={styles.col3}>{formatCurrency(item.price, formData.currency)}</Text>
+                        <Text style={styles.col4}>{formatCurrency(item.quantity * item.price, formData.currency)}</Text>
                     </View>
                 ))}
             </View>
@@ -199,30 +235,29 @@ const InvoiceDocument = ({ formData, calculateTotal, calculateBalance, logoSrc }
             <View style={styles.summary}>
                 <View style={styles.summaryRow}>
                     <Text style={styles.summaryLabel}>Subtotal:</Text>
-                    <Text style={styles.summaryValue}>{formatCurrency(calculateTotal())}</Text>
+                    <Text style={styles.summaryValue}>{formatCurrency(calculateTotal(), formData.currency)}</Text>
                 </View>
                 <View style={styles.summaryRow}>
                     <Text style={styles.summaryLabel}>Paid:</Text>
-                    <Text style={styles.summaryValue}>{formatCurrency(formData.amountPaid)}</Text>
+                    <Text style={styles.summaryValue}>{formatCurrency(formData.amountPaid, formData.currency)}</Text>
                 </View>
                 <View style={[styles.summaryRow, { marginTop: 8, borderTopWidth: 2, borderTopColor: "#1e293b", paddingTop: 6 }]}>
                     <Text style={[styles.summaryLabel, styles.balanceDue]}>Balance Due:</Text>
-                    <Text style={[styles.summaryValue, styles.balanceDue]}>{formatCurrency(calculateBalance())}</Text>
-
+                    <Text style={[styles.summaryValue, styles.balanceDue]}>{formatCurrency(calculateBalance(), formData.currency)}</Text>
                 </View>
-
-                {formData.note && (
-                    <View style={styles.noteSection}>
-                        <Text style={styles.noteTitle}>Note:</Text>
-                        <Text style={styles.noteText}>{formData.note}</Text>
-                    </View>
-                )}
             </View>
+
+            {formData.note && (
+                <View style={styles.noteSection}>
+                    <Text style={styles.noteTitle}>Note:</Text>
+                    <Text style={styles.noteText}>{formData.note}</Text>
+                </View>
+            )}
         </Page>
     </Document>
 );
 
-const InvoiceGenerator = () => {
+const InvoiceGenerator = ({ onFinalDownload }) => {
     const [formData, setFormData] = useState({
         businessName: "",
         invoiceNumber: "",
@@ -233,7 +268,29 @@ const InvoiceGenerator = () => {
         items: [{ name: "", quantity: 1, price: 0 }],
         amountPaid: 0,
         note: "",
+        currency: "GHS",
     });
+
+    const [feedback, setFeedback] = useState({
+        rating: 0,
+        comments: "",
+        submitted: false
+    });
+
+    const [hoveredStar, setHoveredStar] = useState(0);
+
+    const currencies = [
+        { code: "USD", symbol: "$", name: "US Dollar" },
+        { code: "EUR", symbol: "€", name: "Euro" },
+        { code: "GBP", symbol: "£", name: "British Pound" },
+        { code: "GHS", symbol: "₵", name: "Ghana Cedi" },
+        { code: "NGN", symbol: "₦", name: "Nigerian Naira" },
+        { code: "ZAR", symbol: "R", name: "South African Rand" },
+        { code: "JPY", symbol: "¥", name: "Japanese Yen" },
+        { code: "CNY", symbol: "¥", name: "Chinese Yuan" },
+        { code: "CAD", symbol: "C$", name: "Canadian Dollar" },
+        { code: "AUD", symbol: "A$", name: "Australian Dollar" },
+    ];
 
     const [showInvoice, setShowInvoice] = useState(false);
     const [emailSent, setEmailSent] = useState(false);
@@ -250,7 +307,6 @@ const InvoiceGenerator = () => {
         loadLogo();
     }, []);
 
-    // CRITICAL FIX: EmailJS Initialization
     useEffect(() => {
         emailjs.init(PUBLIC_KEY);
     }, []);
@@ -288,45 +344,99 @@ const InvoiceGenerator = () => {
 
     const handleSendEmail = async () => {
         if (!formData.clientEmail) {
-            alert("Please provide a valid client email before sending.");
+            alert("Please enter a client email address");
+            return;
+        }
+
+        if (!emailjs || !SERVICE_ID || !INVOICE_TEMPLATE_ID || !PUBLIC_KEY) {
+            alert("Email service is not configured. Check the setup instructions in the code.");
             return;
         }
 
         setIsSending(true);
 
         try {
+            const blob = await pdf(
+                <InvoiceDocument
+                    formData={formData}
+                    calculateTotal={calculateTotal}
+                    calculateBalance={calculateBalance}
+                    logoSrc={logoBase64}
+                />
+            ).toBlob();
+
+            const base64Data = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+
             const templateParams = {
-                client_name: formData.clientName || "Valued Client",
+                client_name: formData.clientName || 'Valued Client',
                 client_email: formData.clientEmail,
-                client_phone: formData.clientPhone || "Not provided",
+                client_phone: formData.clientPhone,
                 invoice_number: formData.invoiceNumber,
                 businessName: formData.businessName,
-                date: new Date(formData.date).toLocaleDateString(),
                 subtotal: calculateTotal().toFixed(2),
                 amount_paid: parseFloat(formData.amountPaid || 0).toFixed(2),
                 balance_due: calculateBalance().toFixed(2),
-                note: formData.note || "No additional notes",
+                date: new Date(formData.date).toLocaleDateString(),
+                note: formData.note,
                 year: new Date().getFullYear(),
+                pdf_download_link: base64Data,
+                currency: formData.currency
             };
 
-            await emailjs.send(
-                SERVICE_ID,
-                TEMPLATE_ID,
-                templateParams,
-                PUBLIC_KEY
-            );
+            await emailjs.send(SERVICE_ID, INVOICE_TEMPLATE_ID, templateParams, PUBLIC_KEY);
 
             setEmailSent(true);
             alert(`Invoice sent successfully to ${formData.clientEmail}!`);
 
         } catch (error) {
-            console.error("Error sending email:", error);
-            alert("Failed to send invoice. Please try again.");
+            console.error("Error generating or sending PDF:", error);
+            alert('Failed to send email. Please check your EmailJS configuration and network connection.');
         } finally {
             setIsSending(false);
         }
     };
 
+    // NEW: Function to handle feedback submission to EmailJS
+    const handleSubmitFeedback = async () => {
+        if (!feedback.rating) {
+            alert("Please rate your overall experience before submitting.");
+            return;
+        }
+
+        // To prevent multiple submissions
+        if (feedback.submitted) return;
+
+        try {
+            const templateParams = {
+                rating: feedback.rating,
+                user_comments: feedback.comments,
+                invoice_number: formData.invoiceNumber || 'N/A', // Context
+                business_name: formData.businessName || 'N/A', // Context
+                year: new Date().getFullYear(),
+                // Use a dynamic subject for easy triage
+                subject: `[Invigen Feedback] Rating: ${feedback.rating}/5 Stars`,
+            };
+
+            // Assuming we are sending the feedback to a predefined email (e.g., your support email)
+            // which is set in the EmailJS template window 'template_feedback_invigen'.
+            await emailjs.send(SERVICE_ID, FEEDBACK_TEMPLATE_ID, templateParams, PUBLIC_KEY);
+
+            // Update local state only after successful submission
+            setFeedback(prev => ({ ...prev, submitted: true }));
+            alert('Feedback submitted successfully! Thank you.');
+
+        } catch (error) {
+            console.error("Error sending feedback:", error);
+            alert('Failed to submit feedback. Please check your EmailJS configuration and network connection.');
+            // Revert submission state on failure
+            setFeedback(prev => ({ ...prev, submitted: false }));
+        }
+    };
 
     return (
         <div className="relative min-h-screen bg-gray-950 pt-20 bg-cover bg-center tracking-tighter" style={{
@@ -337,7 +447,7 @@ const InvoiceGenerator = () => {
                 {!showInvoice ? (
                     <>
                         <div className="text-center mb-12">
-                            <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4 tracking-tighter ">
+                            <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4 tracking-tighter">
                                 Generate Invoice
                             </h1>
                             <p className="text-xl text-gray-400">
@@ -390,6 +500,22 @@ const InvoiceGenerator = () => {
                                         onChange={handleFormChange}
                                         className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                                     />
+                                </div>
+
+                                <div className="mt-6">
+                                    <label className="block text-sm font-semibold text-gray-300 mb-2">Currency</label>
+                                    <select
+                                        name="currency"
+                                        value={formData.currency}
+                                        onChange={handleFormChange}
+                                        className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                    >
+                                        {currencies.map(curr => (
+                                            <option key={curr.code} value={curr.code}>
+                                                {curr.symbol} - {curr.name} ({curr.code})
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
                             </div>
 
@@ -494,7 +620,7 @@ const InvoiceGenerator = () => {
                                                 </div>
                                                 <div className="col-span-4 sm:col-span-2 flex items-center justify-between">
                                                     <div className="text-gray-400 text-sm font-semibold">
-                                                        ${(item.quantity * item.price).toFixed(2)}
+                                                        {formatCurrency(item.quantity * item.price, formData.currency)}
                                                     </div>
                                                     {formData.items.length > 1 && (
                                                         <button
@@ -519,7 +645,7 @@ const InvoiceGenerator = () => {
                                     <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
                                         <label className="block text-xs font-semibold text-gray-400 mb-2">Subtotal</label>
                                         <div className="text-2xl font-bold text-white">
-                                            ${calculateTotal().toFixed(2)}
+                                            {formatCurrency(calculateTotal(), formData.currency)}
                                         </div>
                                     </div>
                                     <div>
@@ -538,7 +664,7 @@ const InvoiceGenerator = () => {
                                     <div className="bg-gradient-to-br from-blue-600 to-cyan-400 rounded-xl p-4">
                                         <label className="block text-xs font-semibold text-blue-100 mb-2">Balance Due</label>
                                         <div className="text-2xl font-bold text-white">
-                                            ${calculateBalance().toFixed(2)}
+                                            {formatCurrency(calculateBalance(), formData.currency)}
                                         </div>
                                     </div>
                                 </div>
@@ -564,11 +690,10 @@ const InvoiceGenerator = () => {
                                 <ArrowRight className="w-5 h-5" />
                             </button>
                         </div>
-                        <Download className="w-5 h-5 " />
                     </>
                 ) : (
                     <div className="space-y-6">
-                        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+                        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex justify-between items-center">
                             <button
                                 onClick={() => setShowInvoice(false)}
                                 className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
@@ -576,6 +701,14 @@ const InvoiceGenerator = () => {
                                 <ArrowLeft className="w-4 h-4" />
                                 Back to Form
                             </button>
+
+                            {/* <button
+                                onClick={() => onFinalDownload(formData)}
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-xl font-semibold hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-300 text-sm"
+                            >
+                                <Download className="w-4 h-4" />
+                                Go to Download Link
+                            </button> */}
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -658,7 +791,6 @@ const InvoiceGenerator = () => {
 
                         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl">
                             <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
-
                                 Invoice Preview
                             </h2>
                             <div className="rounded-xl overflow-hidden border border-gray-800 shadow-2xl" style={{ height: "800px" }}>
@@ -666,6 +798,104 @@ const InvoiceGenerator = () => {
                                     <InvoiceDocument formData={formData} calculateTotal={calculateTotal} calculateBalance={calculateBalance} logoSrc={logoBase64} />
                                 </PDFViewer>
                             </div>
+                        </div>
+
+                        <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-2xl p-8 shadow-xl">
+                            <div className="text-center mb-8">
+                                <h2 className="text-3xl font-bold text-white mb-2">How was your experience?</h2>
+                                <p className="text-gray-400">Your feedback helps us improve our invoice generator</p>
+                            </div>
+
+                            {!feedback.submitted ? (
+                                <div className="space-y-8">
+                                    <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
+                                        <label className="block text-center text-lg font-semibold text-gray-300 mb-4">
+                                            Overall Experience
+                                        </label>
+                                        <div className="flex justify-center gap-2">
+                                            {[1, 2, 3, 4, 5].map((star) => (
+                                                <button
+                                                    key={star}
+                                                    onClick={() => setFeedback(prev => ({ ...prev, rating: star }))}
+                                                    onMouseEnter={() => setHoveredStar(star)}
+                                                    onMouseLeave={() => setHoveredStar(0)}
+                                                    className="transform transition-all duration-200 hover:scale-125"
+                                                >
+                                                    <svg
+                                                        className={`w-12 h-12 transition-colors ${star <= (hoveredStar || feedback.rating)
+                                                            ? 'fill-yellow-400 text-yellow-400'
+                                                            : 'fill-gray-600 text-gray-600'
+                                                            }`}
+                                                        viewBox="0 0 24 24"
+                                                    >
+                                                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                                                    </svg>
+                                                </button>
+                                            ))}
+                                        </div>
+                                        {feedback.rating > 0 && (
+                                            <p className="text-center mt-4 text-cyan-400 font-medium animate-fade-in">
+                                                {feedback.rating === 5 && "Amazing! 🎉"}
+                                                {feedback.rating === 4 && "Great! 😊"}
+                                                {feedback.rating === 3 && "Good! 👍"}
+                                                {feedback.rating === 2 && "Could be better 🤔"}
+                                                {feedback.rating === 1 && "We'll improve 💪"}
+                                            </p>
+                                        )}
+                                    </div>
+
+
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-300 mb-3">
+                                            Additional Comments (Optional)
+                                        </label>
+                                        <textarea
+                                            value={feedback.comments}
+                                            onChange={(e) => setFeedback(prev => ({ ...prev, comments: e.target.value }))}
+                                            className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
+                                            rows="4"
+                                            placeholder="Tell us what you loved or how we can improve..."
+                                        />
+                                    </div>
+
+                                    <button
+                                        onClick={() => {
+                                            if (feedback.rating === 0) {
+                                                alert("Please rate your overall experience");
+                                                return;
+                                            }
+                                            // Call the new EmailJS submission function
+                                            handleSubmitFeedback();
+                                        }}
+                                        className="w-full bg-gradient-to-r from-blue-600 to-cyan-500 text-white px-8 py-4 rounded-xl text-lg font-semibold hover:shadow-2xl hover:shadow-blue-500/30 transform hover:scale-[1.02] transition-all duration-300 flex items-center justify-center gap-3"
+                                    >
+                                        <Send className="w-5 h-5" />
+                                        Submit Feedback
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="text-center py-12 animate-fade-in">
+                                    <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-400 rounded-full flex items-center justify-center mx-auto mb-6">
+                                        <CheckCircle className="w-10 h-10 text-white" />
+                                    </div>
+                                    <h3 className="text-2xl font-bold text-white mb-3">Thank you for your feedback!</h3>
+                                    <p className="text-gray-400 mb-6">
+                                        Your input helps us create better invoicing experiences
+                                    </p>
+                                    <button
+                                        onClick={() => setFeedback({
+                                            rating: 0,
+                                            // clarity: 0, // Reset unused properties too
+                                            // professionalism: 0,
+                                            comments: "",
+                                            submitted: false
+                                        })}
+                                        className="text-cyan-400 hover:text-cyan-300 transition-colors font-medium"
+                                    >
+                                        Submit another response
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}

@@ -7,9 +7,9 @@ const Navbar = ({ currentPage, setCurrentPage }) => {
     const [scrolled, setScrolled] = useState(false);
 
     const navItems = [
-        { name: 'Home', id: 'home' },
-        { name: 'About', id: 'about' },
-        { name: 'Contact', id: 'contact' }
+        { name: 'Home', id: 'home', sectionId: 'hero-section' },
+        { name: "Who It's For", id: 'who-its-for', sectionId: 'use-cases-section' },
+        { name: 'Contact', id: 'contact', sectionId: 'contact-section' }
     ];
 
     // Handle scroll effect
@@ -21,16 +21,45 @@ const Navbar = ({ currentPage, setCurrentPage }) => {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
+    const handleNavClick = (item) => {
+        if (currentPage !== 'home') {
+            // If not on homepage, navigate to homepage first
+            setCurrentPage('home');
+            // Wait for page to load then scroll
+            setTimeout(() => {
+                scrollToSection(item.sectionId);
+            }, 100);
+        } else {
+            // Already on homepage, just scroll
+            scrollToSection(item.sectionId);
+        }
+        setMobileMenuOpen(false);
+    };
+
+    const scrollToSection = (sectionId) => {
+        const element = document.getElementById(sectionId);
+        if (element) {
+            const offset = 80; // Height of navbar
+            const elementPosition = element.getBoundingClientRect().top;
+            const offsetPosition = elementPosition + window.pageYOffset - offset;
+
+            window.scrollTo({
+                top: offsetPosition,
+                behavior: 'smooth'
+            });
+        }
+    };
+
     return (
         <nav className={`fixed w-full top-0 z-50 transition-all duration-300 ${scrolled
-            ? 'bg-gray-950/80 backdrop-blur-lg border-b border-gray-800'
-            : 'bg-transparent'
+                ? 'bg-gray-950/80 backdrop-blur-lg border-b border-gray-800'
+                : 'bg-transparent'
             }`}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center h-20">
                     {/* Logo */}
                     <button
-                        onClick={() => setCurrentPage('home')}
+                        onClick={() => handleNavClick(navItems[0])}
                         className="flex items-center gap-3 group"
                     >
                         <img
@@ -38,7 +67,6 @@ const Navbar = ({ currentPage, setCurrentPage }) => {
                             src={logo}
                             alt="Invigen Logo"
                         />
-
                     </button>
 
                     {/* Desktop Menu */}
@@ -46,11 +74,8 @@ const Navbar = ({ currentPage, setCurrentPage }) => {
                         {navItems.map((item) => (
                             <button
                                 key={item.id}
-                                onClick={() => setCurrentPage(item.id)}
-                                className={`${currentPage === item.id
-                                    ? 'text-white font-medium bg-gray-800'
-                                    : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
-                                    } px-4 py-2 text-sm font-normal transition-all duration-300 rounded-lg`}
+                                onClick={() => handleNavClick(item)}
+                                className="text-gray-400 hover:text-white hover:bg-gray-800/50 px-4 py-2 text-sm font-normal transition-all duration-300 rounded-lg"
                             >
                                 {item.name}
                             </button>
@@ -89,14 +114,8 @@ const Navbar = ({ currentPage, setCurrentPage }) => {
                         {navItems.map((item) => (
                             <button
                                 key={item.id}
-                                onClick={() => {
-                                    setCurrentPage(item.id);
-                                    setMobileMenuOpen(false);
-                                }}
-                                className={`${currentPage === item.id
-                                    ? 'bg-gray-800 text-white font-medium'
-                                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-                                    } block w-full text-left px-4 py-3 rounded-lg text-base transition-colors`}
+                                onClick={() => handleNavClick(item)}
+                                className="text-gray-400 hover:bg-gray-800 hover:text-white block w-full text-left px-4 py-3 rounded-lg text-base transition-colors"
                             >
                                 {item.name}
                             </button>
