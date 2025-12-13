@@ -51,9 +51,9 @@ const Navbar = ({ currentPage, setCurrentPage }) => {
     };
 
     return (
-        <nav className={`fixed w-full top-0 z-50 transition-all duration-300 ${scrolled
-                ? 'bg-gray-950/80 backdrop-blur-lg border-b border-gray-800'
-                : 'bg-transparent'
+        <nav className={`fixed w-full mt-3 top-0 z-50 rounded-full transition-all duration-300 ${scrolled
+            ? 'bg-gray-950/80 backdrop-blur-lg border-b border-gray-800'
+            : 'bg-transparent'
             }`}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center h-20">
