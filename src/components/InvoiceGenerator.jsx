@@ -1272,7 +1272,7 @@ const InvoiceGenerator = ({ onFinalDownload }) => {
                                     className="flex-1 inline-flex items-center justify-center gap-3 px-8 py-4 bg-gray-800 hover:bg-gray-700 text-white rounded-xl text-lg font-semibold border-2 border-gray-700 hover:border-gray-600 transition-all duration-300"
                                 >
                                     <Palette className="w-5 h-5" />
-                                    Customize Invoice (Optional)
+                                    Customize Invoice
                                 </button>
 
                                 <button
