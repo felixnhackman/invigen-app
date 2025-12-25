@@ -6,7 +6,8 @@ import ContactPage from './components/ContactPage';
 import Footer from './components/Footer';
 import InvoiceGenerator from './components/InvoiceGenerator';
 import DarkModeToggle from './components/DarkModeToggle';
-import InvoiceDownloadPage from './components/InvoiceDownload';
+// import InvoiceDownloadPage from './components/InvoiceDownload';
+// import InvoiceCustomizer from './components/invoiceCustomizer';
 import './index.css';
 import './App.css';
 

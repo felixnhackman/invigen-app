@@ -17,7 +17,8 @@ import {
     ShoppingCart,
     Wrench,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    Instagram
 } from 'lucide-react';
 
 import invigenmain from "../assets/invigenmain.png";
@@ -69,11 +70,11 @@ const HomePage = ({ setCurrentPage = () => { } }) => {
                     </div>
 
                     <div className="relative max-w-7xl mx-auto">
-                        <div className="relative flex items-center justify-center gap-4 overflow-hidden py-8">
+                        <div className="relative flex items-center justify-center gap-4 overflow-hidden py-8 ease-in">
                             {/* Previous Flyer (Left) */}
                             <div className="hidden md:block w-64 h-fit opacity-30 hover:opacity-50 transition-all duration-300 cursor-pointer flex-shrink-0"
                                 onClick={prevFlyer}>
-                                <div className="relative rounded-xl overflow-hidden bg-gray-800 border border-gray-700 h-full shadow-lg">
+                                <div className="relative rounded-xl overflow-hidden bg-gray-800 h-full shadow-lg ease-in">
                                     <img
                                         src={flyers[getPrevIndex()].image}
                                         alt={flyers[getPrevIndex()].title}
@@ -84,7 +85,7 @@ const HomePage = ({ setCurrentPage = () => { } }) => {
 
                             {/* Current Flyer (Center) */}
                             <div className="w-full md:w-fit h-fit md:h-[600px] flex-shrink-0 transition-all duration-500 ease-in-out">
-                                <div className="relative rounded-2xl overflow-hidden bg-gray-800 border-2 border-blue-500 shadow-lg h-full">
+                                <div className="relative rounded-2xl overflow-hidden bg-gray-800 shadow-lg h-full">
                                     <img
                                         src={flyers[currentFlyer].image}
                                         alt={flyers[currentFlyer].title}
@@ -111,9 +112,9 @@ const HomePage = ({ setCurrentPage = () => { } }) => {
                             </div>
 
                             {/* Next Flyer (Right) */}
-                            <div className="hidden md:block md:w-fit h-[400px] opacity-30 hover:opacity-50 transition-all duration-300 cursor-pointer flex-shrink-0"
+                            <div className="hidden md:block md:w-fit h-[400px] opacity-30 hover:opacity-50 transition-all duration-600 cursor-pointer flex-shrink-0"
                                 onClick={nextFlyer}>
-                                <div className="relative rounded-xl overflow-hidden bg-gray-800 border border-gray-700 h-full shadow-lg">
+                                <div className="relative rounded-xl overflow-hidden bg-gray-800 h-full shadow-lg">
                                     <img
                                         src={flyers[getNextIndex()].image}
                                         alt={flyers[getNextIndex()].title}
@@ -373,11 +374,30 @@ const HomePage = ({ setCurrentPage = () => { } }) => {
                         <div>
                             <h3 className="text-sm font-semibold uppercase tracking-wider mb-4 text-gray-400">Follow Us</h3>
                             <div className="flex gap-3">
-                                {[Facebook, Twitter, Linkedin].map((Icon, idx) => (
-                                    <button key={idx} className="w-10 h-10 rounded-lg bg-gray-900 hover:bg-gray-800 flex items-center justify-center transition-colors">
-                                        <Icon className="w-5 h-5 text-gray-400" />
-                                    </button>
-                                ))}
+                                <a
+                                    href="https://www.facebook.com/profile.php?id=61584743459766"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-10 h-10 rounded-lg bg-gray-900 hover:bg-gray-800 flex items-center justify-center transition-colors"
+                                >
+                                    <Facebook className="w-5 h-5 text-gray-400" />
+                                </a>
+                                <a
+                                    href="https://www.instagram.com/pixeldesk_solutions/"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-10 h-10 rounded-lg bg-gray-900 hover:bg-gray-800 flex items-center justify-center transition-colors"
+                                >
+                                    <Instagram className="w-5 h-5 text-gray-400" />
+                                </a>
+                                <a
+                                    href="https://www.linkedin.com/company/pixeldesk-solutions/"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-10 h-10 rounded-lg bg-gray-900 hover:bg-gray-800 flex items-center justify-center transition-colors"
+                                >
+                                    <Linkedin className="w-5 h-5 text-gray-400" />
+                                </a>
                             </div>
                         </div>
                     </div>
