@@ -17,7 +17,7 @@ import logo2 from '../assets/logo2.png';
 import PoppinsBold from "../fonts/Poppins-Bold.ttf";
 import PoppinsRegular from "../fonts/Poppins-Regular.ttf";
 import NotoSansBold from "../fonts/NotoSans-Bold.ttf";
-import InvoiceCustomizer, { CustomInvoiceDocument } from './InvoiceCustomizer';
+import InvoiceCustomizer, { CustomInvoiceDocument } from './InvoiceCustomize.jsx';
 import { NotificationDialog, Toast, useNotification } from './NotificationDialog.jsx';
 import emailjs from '@emailjs/browser';
 
