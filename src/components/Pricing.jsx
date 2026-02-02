@@ -58,7 +58,7 @@ const Pricing = ({ setCurrentPage, user }) => {
             ],
             cta: currentPlan === 'pro' ? 'Current Plan' : 'Upgrade to Pro',
             highlight: true,
-            disabled: currentPlan === 'pro',
+            disabled: currentPlan === 'pro' || subscriptionLoading,
             badge: 'Best value for freelancers & small businesses' // PHASE 7.2: Value framing
         }
     ];
@@ -168,25 +168,50 @@ const Pricing = ({ setCurrentPage, user }) => {
 
                         // Verify payment with backend
                         const verificationResult = await verifyPayment(response.reference);
+                        console.log('Payment verification result:', verificationResult);
                         
                         // Backend verified payment and updated subscription
                         setIsProcessing(false);
+                        
+                        // Show success message
                         showNotification({
                             type: 'success',
                             title: 'Payment Successful! 🎉',
-                            message: `Welcome to ${selectedPlan.name} plan! Your subscription is now active.`,
+                            message: `Welcome to ${selectedPlan.name} plan! Your subscription is now active. Refreshing your account...`,
                             autoClose: true,
                             autoCloseDelay: 5000
                         });
 
                         // CRITICAL: Do NOT set plan locally - subscription state comes from backend
-                        // Refresh subscription state from backend
+                        // Refresh subscription state multiple times to ensure we get the updated data
+                        // Backend might need a moment to persist the changes
+                        console.log('Payment verified successfully:', verificationResult);
+                        console.log('Refreshing subscription state...');
+                        
+                        // Immediate refresh
                         refreshSubscription();
                         
-                        // Small delay to allow backend to process, then refresh
+                        // Refresh again after delays to ensure we get updated data
                         setTimeout(() => {
+                            console.log('Refreshing subscription state (attempt 2)...');
                             refreshSubscription();
-                        }, 1000);
+                        }, 2000);
+                        
+                        setTimeout(() => {
+                            console.log('Refreshing subscription state (attempt 3)...');
+                            refreshSubscription();
+                        }, 4000);
+                        
+                        // After 3 seconds, redirect to profile page to show PRO status
+                        setTimeout(() => {
+                            console.log('Redirecting to profile to show PRO subscription...');
+                            if (setCurrentPage) {
+                                setCurrentPage('profile');
+                            } else {
+                                // Fallback: reload page if setCurrentPage not available
+                                window.location.reload();
+                            }
+                        }, 3000);
                     } catch (verifyError) {
                         setIsProcessing(false);
                         showNotification({

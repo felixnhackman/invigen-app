@@ -3,8 +3,10 @@
  * Uses req.user.email (or id) instead of hardcoded user data
  */
 
+import { getSubscription, setPlan, updateSubscription } from '../models/subscription.store.js';
+
 // PHASE 8.5: TODO - Replace with actual database queries
-// This is a placeholder implementation that should be replaced with real DB access
+// Currently using in-memory storage - replace with Supabase/PostgreSQL in production
 
 /**
  * PHASE 8.5: Get subscription for authenticated user
@@ -23,17 +25,16 @@ export async function getMySubscription(req, res) {
             });
         }
 
-        // PHASE 8.5: TODO - Fetch subscription from database using userId or userEmail
-        // For now, return default FREE plan
-        // Replace this with actual database query:
-        // const subscription = await Subscription.findOne({ userId });
-        // if (!subscription) return { plan: 'free' };
-
+        // PHASE 8.5: Get subscription from store (in-memory, replace with database)
+        const subscriptionData = getSubscription(userId);
+        
         const subscription = {
-            plan: 'free', // PHASE 8.5: Default to free if no subscription found
+            plan: subscriptionData.plan || 'free',
             userId,
             userEmail,
-            createdAt: new Date().toISOString(),
+            ...subscriptionData,
+            // Ensure createdAt exists
+            createdAt: subscriptionData.createdAt || new Date().toISOString(),
         };
 
         return res.json(subscription);
@@ -175,19 +176,24 @@ export async function verifyPayment(req, res) {
             });
         }
 
-        // CRITICAL: Update subscription to PRO in database
-        // PHASE 8.5: TODO - Replace with actual database update:
-        // await Subscription.findOneAndUpdate(
-        //     { userId },
-        //     { 
-        //         plan: 'pro',
-        //         paystackReference: reference,
-        //         paystackCustomerCode: paystackData.data.customer.customer_code,
-        //         activatedAt: new Date(),
-        //         updatedAt: new Date() 
-        //     },
-        //     { upsert: true }
-        // );
+        // CRITICAL: Update subscription to PRO in store (in-memory, replace with database)
+        const activatedAt = new Date().toISOString();
+        
+        // Store subscription with payment details
+        const subscriptionWithPayment = {
+            plan: 'pro',
+            userId,
+            userEmail,
+            paystackReference: reference,
+            paystackCustomerCode: paystackData.data.customer.customer_code,
+            activatedAt,
+            createdAt: activatedAt,
+        };
+        
+        // Update store
+        updateSubscription(userId, subscriptionWithPayment);
+
+        console.log(`✅ Subscription updated to PRO for user ${userId} (${userEmail})`);
 
         // Return updated subscription
         return res.json({
@@ -195,7 +201,7 @@ export async function verifyPayment(req, res) {
             userId,
             userEmail,
             paystackReference: reference,
-            activatedAt: new Date().toISOString(),
+            activatedAt: subscriptionWithPayment.activatedAt,
             message: 'Subscription activated successfully',
         });
     } catch (error) {
