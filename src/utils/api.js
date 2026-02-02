@@ -227,3 +227,35 @@ export async function requestWatermarkAuth() {
         throw error;
     }
 }
+
+/**
+ * Verify Paystack payment and activate subscription
+ * POST /api/subscriptions/verify
+ */
+export async function verifyPayment(reference) {
+    try {
+        const response = await authenticatedFetch('/api/subscriptions/verify', {
+            method: 'POST',
+            body: JSON.stringify({ reference }),
+        });
+        
+        if (!response.ok) {
+            if (response.status === 401) {
+                throw new Error('UNAUTHENTICATED');
+            }
+            if (response.status === 400) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || 'Payment verification failed');
+            }
+            throw new Error(`Failed to verify payment: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        if (error.message === 'UNAUTHENTICATED' || error.message === 'SESSION_EXPIRED') {
+            throw error;
+        }
+        throw error;
+    }
+}

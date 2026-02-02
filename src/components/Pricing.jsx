@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Check, ArrowRight, Zap, Crown, Info } from 'lucide-react';
 import { useNotification } from './NotificationDialog';
+import { useSubscription } from '../hooks/useSubscription';
+import { initializePaystackCheckout, generatePaymentReference } from '../utils/paystack';
+import { verifyPayment } from '../utils/api';
+import { getAuthUser } from '../lib/supabase';
 import hero from '../assets/hero.png';
 
 const Pricing = ({ setCurrentPage, user }) => {
     const { showNotification, showToast } = useNotification();
+    const { plan: currentPlan, isLoading: subscriptionLoading, isPro, refreshSubscription } = useSubscription();
     const [isProcessing, setIsProcessing] = useState(false);
     const [userEmail, setUserEmail] = useState(user?.email || '');
     const [billingPeriod, setBillingPeriod] = useState('monthly'); // PHASE 7.2: Yearly anchor (visual only)
-    const [currentPlan, setCurrentPlan] = useState('free'); // Placeholder - connect to real subscription later
 
     // PHASE 7.2: Yearly anchor tooltip state
     const [showYearlyTooltip, setShowYearlyTooltip] = useState(false);
@@ -80,13 +84,8 @@ const Pricing = ({ setCurrentPage, user }) => {
             return;
         }
 
-        // Free plan - just set it
+        // Free plan - no action needed (user is already on free)
         if (selectedPlan.id === 'free') {
-            setCurrentPlan('free');
-            showToast({
-                type: 'success',
-                message: 'Switched to Free plan'
-            });
             return;
         }
 
@@ -114,29 +113,111 @@ const Pricing = ({ setCurrentPage, user }) => {
             return;
         }
 
-        // PHASE 8: TODO - Connect to real payment processing
-        // This will integrate with Paystack and backend subscription API
+        // CRITICAL FIX: Remove direct plan mutation - PRO must come from backend after payment verification
+        // Initialize Paystack checkout
         setIsProcessing(true);
-        showNotification({
-            type: 'info',
-            title: 'Payment Processing',
-            message: 'Redirecting to payment...',
-            autoClose: true,
-            autoCloseDelay: 2000
-        });
         
-        // PHASE 8: Placeholder - Replace with real Paystack integration
-        setTimeout(() => {
+        try {
+            // Get authenticated user for payment reference
+            const authUser = await getAuthUser();
+            if (!authUser) {
+                throw new Error('User not authenticated');
+            }
+
+            // Generate unique payment reference
+            const reference = generatePaymentReference(authUser.id);
+            
+            // Show payment popup notification
+            showNotification({
+                type: 'info',
+                title: 'Opening Payment',
+                message: 'Paystack checkout will open in a popup...',
+                autoClose: true,
+                autoCloseDelay: 2000
+            });
+
+            // Initialize Paystack checkout
+            await initializePaystackCheckout({
+                email: userEmail,
+                amount: selectedPlan.price, // Amount in GHS
+                reference,
+                metadata: {
+                    userId: authUser.id,
+                    userEmail: authUser.email,
+                    plan: selectedPlan.id,
+                    custom_fields: [
+                        {
+                            display_name: 'Plan',
+                            variable_name: 'plan',
+                            value: selectedPlan.id
+                        }
+                    ]
+                },
+                callback: async (response) => {
+                    // Payment successful - verify with backend
+                    try {
+                        setIsProcessing(true);
+                        showNotification({
+                            type: 'info',
+                            title: 'Verifying Payment',
+                            message: 'Please wait while we verify your payment...',
+                            autoClose: false
+                        });
+
+                        // Verify payment with backend
+                        const verificationResult = await verifyPayment(response.reference);
+                        
+                        // Backend verified payment and updated subscription
+                        setIsProcessing(false);
+                        showNotification({
+                            type: 'success',
+                            title: 'Payment Successful! 🎉',
+                            message: `Welcome to ${selectedPlan.name} plan! Your subscription is now active.`,
+                            autoClose: true,
+                            autoCloseDelay: 5000
+                        });
+
+                        // CRITICAL: Do NOT set plan locally - subscription state comes from backend
+                        // Refresh subscription state from backend
+                        refreshSubscription();
+                        
+                        // Small delay to allow backend to process, then refresh
+                        setTimeout(() => {
+                            refreshSubscription();
+                        }, 1000);
+                    } catch (verifyError) {
+                        setIsProcessing(false);
+                        showNotification({
+                            type: 'error',
+                            title: 'Verification Failed',
+                            message: verifyError.message || 'Failed to verify payment. Please contact support if payment was deducted.',
+                            autoClose: true,
+                            autoCloseDelay: 8000
+                        });
+                    }
+                },
+                onClose: () => {
+                    // User cancelled payment
+                    setIsProcessing(false);
+                    showNotification({
+                        type: 'info',
+                        title: 'Payment Cancelled',
+                        message: 'Payment was cancelled. You can try again anytime.',
+                        autoClose: true,
+                        autoCloseDelay: 3000
+                    });
+                }
+            });
+        } catch (error) {
             setIsProcessing(false);
             showNotification({
-                type: 'success',
-                title: 'Payment Successful! 🎉',
-                message: `Welcome to ${selectedPlan.name} plan!`,
+                type: 'error',
+                title: 'Payment Error',
+                message: error.message || 'Failed to initialize payment. Please try again.',
                 autoClose: true,
                 autoCloseDelay: 5000
             });
-            setCurrentPlan(selectedPlan.id);
-        }, 2000);
+        }
     };
 
     // PHASE 7.2: Handle yearly toggle (visual only)

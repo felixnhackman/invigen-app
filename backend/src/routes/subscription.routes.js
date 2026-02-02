@@ -4,7 +4,7 @@
 
 import express from 'express';
 import { authMiddleware } from '../middleware/auth.middleware.js';
-import { getMySubscription, updateSubscription } from '../controllers/subscription.controller.js';
+import { getMySubscription, updateSubscription, verifyPayment } from '../controllers/subscription.controller.js';
 
 const router = express.Router();
 
@@ -16,5 +16,8 @@ router.get('/me', getMySubscription);
 
 // POST /api/subscriptions/update - Update subscription (admin/webhook)
 router.post('/update', updateSubscription);
+
+// POST /api/subscriptions/verify - Verify Paystack payment and activate PRO
+router.post('/verify', verifyPayment);
 
 export default router;

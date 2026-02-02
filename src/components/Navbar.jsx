@@ -1,7 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Menu, X, ArrowRight, User, UserPlus, ChevronDown, LogOut } from 'lucide-react';
+import logo from '../assets/logo.png';
+import { useSubscription } from '../hooks/useSubscription';
 
 const Navbar = ({ currentPage, setCurrentPage, user, onLogout }) => {
+    // Auth-aware subscription check for Pricing visibility
+    const { isPro, isLoading: subscriptionLoading } = useSubscription();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
@@ -18,11 +22,21 @@ const Navbar = ({ currentPage, setCurrentPage, user, onLogout }) => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    // Determine if Pricing should be shown
+    // Show Pricing if: not logged in OR logged in but FREE plan
+    const shouldShowPricing = !user || (user && !subscriptionLoading && !isPro);
+
     const navItems = [
         { name: 'Home', id: 'home', sectionId: 'hero-section' },
         { name: "Who It's For", id: 'who-its-for', sectionId: 'use-cases-section' },
         { name: 'Contact', id: 'contact', sectionId: 'contact-section' }
     ];
+
+    // Handle Pricing navigation (page navigation, not section scroll)
+    const handlePricingClick = () => {
+        setCurrentPage('pricing');
+        setMobileMenuOpen(false);
+    };
 
     // Handle scroll effect
     useEffect(() => {
@@ -68,8 +82,12 @@ const Navbar = ({ currentPage, setCurrentPage, user, onLogout }) => {
             : 'bg-transparent'
             }`}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex justify-between items-center h-24">
-                    <span className="text-xl font-semibold text-white">Invigen</span>
+                <div className="flex justify-between items-center h-20">
+                    <img
+                        className="h-16 w-auto object-contain object-left"
+                        src={logo}
+                        alt="Invigen Logo"
+                    />
 
                     {/* Desktop Menu */}
                     <div className="hidden md:flex items-center gap-2">
@@ -82,6 +100,16 @@ const Navbar = ({ currentPage, setCurrentPage, user, onLogout }) => {
                                 {item.name}
                             </button>
                         ))}
+
+                        {/* Pricing Link - Auth-aware visibility */}
+                        {shouldShowPricing && (
+                            <button
+                                onClick={handlePricingClick}
+                                className="text-gray-400 hover:text-white hover:bg-gray-800/50 px-4 py-2 text-sm font-normal transition-all duration-300 rounded-lg"
+                            >
+                                Pricing
+                            </button>
+                        )}
 
                         {/* Auth: Sign up when logged out, Profile dropdown when logged in */}
                         {user ? (
@@ -165,6 +193,16 @@ const Navbar = ({ currentPage, setCurrentPage, user, onLogout }) => {
                                 {item.name}
                             </button>
                         ))}
+
+                        {/* Mobile Pricing Link - Auth-aware visibility */}
+                        {shouldShowPricing && (
+                            <button
+                                onClick={handlePricingClick}
+                                className="text-gray-400 hover:bg-gray-800 hover:text-white block w-full text-left px-4 py-3 rounded-lg text-base transition-colors"
+                            >
+                                Pricing
+                            </button>
+                        )}
 
                         {/* Mobile Auth: Sign up when logged out, Profile / Logout when logged in */}
                         {user ? (

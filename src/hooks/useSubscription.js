@@ -13,6 +13,7 @@ export function useSubscription() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
     const [user, setUser] = useState(null);
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
 
     useEffect(() => {
         let mounted = true;
@@ -75,7 +76,12 @@ export function useSubscription() {
             mounted = false;
             clearInterval(interval);
         };
-    }, []);
+    }, [refreshTrigger]);
+
+    // CRITICAL FIX: Manual refresh function - subscription state comes ONLY from backend
+    const refreshSubscription = () => {
+        setRefreshTrigger(prev => prev + 1);
+    };
 
     const plan = subscription?.plan || 'free';
     const isPro = plan === 'pro';
@@ -99,5 +105,6 @@ export function useSubscription() {
         canCreateInvoice,
         subscription,
         invoiceUsage,
+        refreshSubscription, // CRITICAL: Use this to refresh after payment verification
     };
 }
