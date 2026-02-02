@@ -19,6 +19,9 @@ import PoppinsRegular from "../fonts/Poppins-Regular.ttf";
 import NotoSansBold from "../fonts/NotoSans-Bold.ttf";
 import InvoiceCustomizer, { CustomInvoiceDocument } from './InvoiceCustomize.jsx';
 import { NotificationDialog, Toast, useNotification } from './NotificationDialog.jsx';
+import { useSubscription } from '../hooks/useSubscription';
+import UpgradeModal from './UpgradeModal';
+import { requestDownloadAuth, requestEmailAuth, createInvoice } from '../utils/api';
 import emailjs from '@emailjs/browser';
 
 
@@ -72,12 +75,7 @@ const compressImageForEmail = async (base64Image, maxWidth = 150, maxHeight = 15
             // Use 'image/jpeg' for better compression (even for PNGs)
             const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
 
-            console.log('Image compression:', {
-                originalSize: `${(base64Image.length / 1024).toFixed(2)}KB`,
-                compressedSize: `${(compressedBase64.length / 1024).toFixed(2)}KB`,
-                reduction: `${(((base64Image.length - compressedBase64.length) / base64Image.length) * 100).toFixed(1)}%`
-            });
-
+            // PHASE 8: Removed debug log for production
             resolve(compressedBase64);
         };
 
@@ -386,7 +384,12 @@ const formatCurrency = (amount, currencyCode = "USD") => {
     return `${symbol}${parseFloat(amount || 0).toFixed(2)}`;
 };
 
-const InvoiceGenerator = ({ onFinalDownload }) => {
+const InvoiceGenerator = ({ onFinalDownload, user, setCurrentPage }) => {
+    // PHASE 8.5: Subscription hook with authenticated API calls
+    const { isPro, isFree, hasPremiumAccess, canCreateInvoice, invoiceCount, invoiceLimit, isLoading: subscriptionLoading } = useSubscription();
+    const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+    const [upgradeFeatureName, setUpgradeFeatureName] = useState('');
+
     const [formData, setFormData] = useState({
         businessName: "",
         invoiceNumber: "",
@@ -446,8 +449,9 @@ const InvoiceGenerator = ({ onFinalDownload }) => {
         // Initialize EmailJS
         try {
             emailjs.init(PUBLIC_KEY);
-            console.log('EmailJS initialized successfully');
+            // PHASE 8: Removed debug log for production
         } catch (error) {
+            // PHASE 8: Error logging kept for debugging, but user-friendly message shown
             console.error('Failed to initialize EmailJS:', error);
             showNotification({
                 type: 'error',
@@ -461,7 +465,8 @@ const InvoiceGenerator = ({ onFinalDownload }) => {
     const calculateTotal = () => formData.items.reduce((sum, item) => sum + item.quantity * item.price, 0);
     const calculateBalance = () => calculateTotal() - parseFloat(formData.amountPaid || 0);
 
-    const handleGenerate = () => {
+    // PHASE 8.5: Handle invoice generation with usage tracking
+    const handleGenerate = async () => {
         if (!formData.businessName || !formData.invoiceNumber) {
             showNotification({
                 type: 'warning',
@@ -470,6 +475,40 @@ const InvoiceGenerator = ({ onFinalDownload }) => {
                 details: 'Business Name and Invoice Number are required fields.'
             });
             return;
+        }
+
+        // PHASE 8.5: Check if user can create invoice
+        if (!canCreateInvoice && !subscriptionLoading) {
+            setUpgradeFeatureName(`You've reached your limit of ${invoiceLimit} invoices this month. Create more with Pro.`);
+            setShowUpgradeModal(true);
+            return;
+        }
+
+        // PHASE 8.5: Track invoice creation via API
+        if (user) {
+            try {
+                await createInvoice(formData);
+            } catch (error) {
+                if (error.message === 'LIMIT_REACHED') {
+                    setUpgradeFeatureName(`You've reached your limit of ${invoiceLimit} invoices this month. Create more with Pro.`);
+                    setShowUpgradeModal(true);
+                    return;
+                } else if (error.message === 'UNAUTHENTICATED' || error.message === 'SESSION_EXPIRED') {
+                    showNotification({
+                        type: 'error',
+                        title: 'Session Expired',
+                        message: 'Please sign in again to continue.',
+                        autoClose: true,
+                        autoCloseDelay: 3000
+                    });
+                    if (setCurrentPage) {
+                        setCurrentPage('login');
+                    }
+                    return;
+                }
+                // Non-critical error - allow invoice generation to continue
+                console.error('Failed to track invoice creation:', error);
+            }
         }
 
         setShowInvoice(true);
@@ -540,9 +579,7 @@ const InvoiceGenerator = ({ onFinalDownload }) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
-    // UPDATED handleSendEmail function with logo compression
-    // Replace your current handleSendEmail function with this one
-
+    // PHASE 8.5: Updated handleSendEmail with PRO check
     const handleSendEmail = async () => {
         if (!formData.clientEmail) {
             showNotification({
@@ -565,15 +602,42 @@ const InvoiceGenerator = ({ onFinalDownload }) => {
             return;
         }
 
+        // PHASE 8.5: Check PRO subscription before sending email
+        if (!isPro && !subscriptionLoading) {
+            try {
+                await requestEmailAuth();
+                setUpgradeFeatureName('Send invoices via email');
+                setShowUpgradeModal(true);
+                return;
+            } catch (error) {
+                if (error.message === 'FORBIDDEN') {
+                    setUpgradeFeatureName('Send invoices via email');
+                    setShowUpgradeModal(true);
+                    return;
+                } else if (error.message === 'UNAUTHENTICATED' || error.message === 'SESSION_EXPIRED') {
+                    showNotification({
+                        type: 'error',
+                        title: 'Session Expired',
+                        message: 'Please sign in again to continue.',
+                        autoClose: true,
+                        autoCloseDelay: 3000
+                    });
+                    if (setCurrentPage) {
+                        setCurrentPage('login');
+                    }
+                    return;
+                }
+            }
+        }
+
         setIsSending(true);
 
         try {
-            console.log('Starting email send process...');
+            // PHASE 8: Removed debug logs for production
 
             // Step 1: Prepare compressed logo if it exists
             let compressedLogo = null;
             if (customization && customization.logoUrl) {
-                console.log('Compressing logo for email...');
                 try {
                     compressedLogo = await compressImageForEmail(
                         customization.logoUrl,
@@ -581,9 +645,8 @@ const InvoiceGenerator = ({ onFinalDownload }) => {
                         100,
                         0.6   // 60% quality
                     );
-                    console.log('Logo compressed successfully');
                 } catch (error) {
-                    console.warn('Logo compression failed, will send without logo:', error);
+                    // PHASE 8: Error logging kept for debugging, but silent failure for user
                     showNotification({
                         type: 'warning',
                         title: 'Logo Compression Failed',
@@ -693,23 +756,16 @@ const InvoiceGenerator = ({ onFinalDownload }) => {
                 </Document>
             );
 
-            console.log('Generating PDF...');
+            // PHASE 8: Removed debug logs for production
             const blob = await pdf(<InvoiceDoc />).toBlob();
             const pdfSize = blob.size;
-            console.log('PDF generated successfully, size:', `${(pdfSize / 1024).toFixed(2)}KB`);
 
             // Step 3: Convert blob to base64
             const base64Data = await new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onloadend = () => {
                     const result = reader.result;
-                    const base64Size = result.length;
-                    console.log('Base64 conversion complete');
-                    console.log('Size comparison:', {
-                        pdfKB: `${(pdfSize / 1024).toFixed(2)}KB`,
-                        base64KB: `${(base64Size / 1024).toFixed(2)}KB`,
-                        underLimit: base64Size < 50000 ? '✅ YES' : '❌ NO'
-                    });
+                    // PHASE 8: Removed debug logs for production
                     resolve(result);
                 };
                 reader.onerror = (error) => {
@@ -768,7 +824,7 @@ const InvoiceGenerator = ({ onFinalDownload }) => {
                 pdf_attachment: base64Data
             };
 
-            console.log('Sending email with compressed PDF...');
+            // PHASE 8: Removed debug logs for production
 
             // Step 5: Send email using EmailJS
             const response = await emailjs.send(
@@ -778,7 +834,7 @@ const InvoiceGenerator = ({ onFinalDownload }) => {
                 PUBLIC_KEY
             );
 
-            console.log('Email sent successfully:', response);
+            // PHASE 8: Removed debug log for production
             setEmailSent(true);
 
             showNotification({
@@ -838,7 +894,7 @@ const InvoiceGenerator = ({ onFinalDownload }) => {
         if (feedback.submitted) return;
 
         try {
-            console.log('Submitting feedback...');
+            // PHASE 8: Removed debug logs for production
 
             const templateParams = {
                 rating: feedback.rating,
@@ -849,8 +905,6 @@ const InvoiceGenerator = ({ onFinalDownload }) => {
                 subject: `[Invigen Feedback] Rating: ${feedback.rating}/5 Stars`,
             };
 
-            console.log('Feedback parameters:', templateParams);
-
             const response = await emailjs.send(
                 SERVICE_ID,
                 FEEDBACK_TEMPLATE_ID,
@@ -858,7 +912,7 @@ const InvoiceGenerator = ({ onFinalDownload }) => {
                 PUBLIC_KEY
             );
 
-            console.log('Feedback sent successfully:', response);
+            // PHASE 8: Removed debug log for production
             setFeedback(prev => ({ ...prev, submitted: true }));
 
             showNotification({
@@ -1310,25 +1364,59 @@ const InvoiceGenerator = ({ onFinalDownload }) => {
                                         <p className="text-sm text-gray-400">Save as PDF to your device</p>
                                     </div>
                                 </div>
-                                <PDFDownloadLink
-                                    document={InvoiceDocument}
-                                    fileName={`${formData.businessName || "Invoice"}_${formData.invoiceNumber || "temp"}.pdf`}
-                                    className="w-full inline-flex items-center justify-center gap-3 bg-gradient-to-r from-green-600 to-emerald-500 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-xl hover:shadow-green-500/30 transform hover:scale-105 transition-all duration-300"
-                                >
-                                    {({ loading }) => (
-                                        loading ? (
-                                            <div className="flex items-center justify-center gap-3">
-                                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                                                <span>Generating...</span>
-                                            </div>
-                                        ) : (
-                                            <div className="flex items-center justify-center gap-3">
-                                                <Download className="w-5 h-5" />
-                                                <span>Download PDF</span>
-                                            </div>
-                                        )
-                                    )}
-                                </PDFDownloadLink>
+                                {/* PHASE 8.5: Download button with PRO check */}
+                                {isPro ? (
+                                    <PDFDownloadLink
+                                        document={InvoiceDocument}
+                                        fileName={`${formData.businessName || "Invoice"}_${formData.invoiceNumber || "temp"}.pdf`}
+                                        className="w-full inline-flex items-center justify-center gap-3 bg-gradient-to-r from-green-600 to-emerald-500 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-xl hover:shadow-green-500/30 transform hover:scale-105 transition-all duration-300"
+                                    >
+                                        {({ loading }) => (
+                                            loading ? (
+                                                <div className="flex items-center justify-center gap-3">
+                                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                                                    <span>Generating...</span>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center justify-center gap-3">
+                                                    <Download className="w-5 h-5" />
+                                                    <span>Download PDF</span>
+                                                </div>
+                                            )
+                                        )}
+                                    </PDFDownloadLink>
+                                ) : (
+                                    <button
+                                        onClick={async () => {
+                                            // PHASE 8.5: Check authorization before allowing download
+                                            try {
+                                                await requestDownloadAuth();
+                                                setUpgradeFeatureName('Download PDF invoices');
+                                                setShowUpgradeModal(true);
+                                            } catch (error) {
+                                                if (error.message === 'FORBIDDEN') {
+                                                    setUpgradeFeatureName('Download PDF invoices');
+                                                    setShowUpgradeModal(true);
+                                                } else if (error.message === 'UNAUTHENTICATED' || error.message === 'SESSION_EXPIRED') {
+                                                    showNotification({
+                                                        type: 'error',
+                                                        title: 'Session Expired',
+                                                        message: 'Please sign in again to continue.',
+                                                        autoClose: true,
+                                                        autoCloseDelay: 3000
+                                                    });
+                                                    if (setCurrentPage) {
+                                                        setCurrentPage('login');
+                                                    }
+                                                }
+                                            }
+                                        }}
+                                        className="w-full inline-flex items-center justify-center gap-3 bg-gray-700 text-gray-400 px-6 py-3 rounded-xl font-semibold cursor-not-allowed"
+                                    >
+                                        <Download className="w-5 h-5" />
+                                        <span>Download PDF (Pro)</span>
+                                    </button>
+                                )}
                             </div>
 
                             <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-2xl p-6 shadow-xl">
@@ -1476,6 +1564,14 @@ const InvoiceGenerator = ({ onFinalDownload }) => {
                     </div>
                 )}
             </div>
+
+            {/* PHASE 8.5: Upgrade Modal */}
+            <UpgradeModal
+                isOpen={showUpgradeModal}
+                onClose={() => setShowUpgradeModal(false)}
+                featureName={upgradeFeatureName}
+                setCurrentPage={setCurrentPage}
+            />
         </div>
     );
 };

@@ -3,7 +3,46 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// PHASE 8.5: Validate Supabase configuration
+if (!supabaseUrl || !supabaseAnonKey) {
+    console.warn('⚠️ Supabase environment variables not set. Please configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY');
+}
+
+// PHASE 8.5: Initialize Supabase client with validation
+// If URL is empty, createClient will throw - we handle this gracefully
+export const supabase = supabaseUrl && supabaseAnonKey 
+    ? createClient(supabaseUrl, supabaseAnonKey)
+    : null;
+
+/**
+ * PHASE 8.5: Get authentication token for API calls
+ * Returns the current session's access token
+ */
+export async function getAuthToken() {
+    if (!supabase) {
+        return null;
+    }
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token || null;
+}
+
+/**
+ * PHASE 8.5: Get authenticated user info
+ * Returns user id and email for API calls
+ */
+export async function getAuthUser() {
+    if (!supabase) {
+        return null;
+    }
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+        return null;
+    }
+    return {
+        id: session.user.id,
+        email: session.user.email || ''
+    };
+}
 
 /**
  * Map Supabase user to app user shape { id, email, name }
@@ -25,6 +64,9 @@ export function supabaseUserToAppUser(supabaseUser) {
  * Fetch profile from public.profiles by user id
  */
 export async function getProfile(userId) {
+    if (!supabase) {
+        throw new Error('Supabase not configured');
+    }
     const { data, error } = await supabase
         .from('profiles')
         .select('id, full_name, avatar_url, phone, updated_at, created_at')
@@ -38,6 +80,9 @@ export async function getProfile(userId) {
  * Update profile in public.profiles
  */
 export async function updateProfile(userId, updates) {
+    if (!supabase) {
+        throw new Error('Supabase not configured');
+    }
     const { data, error } = await supabase
         .from('profiles')
         .update({
@@ -55,6 +100,9 @@ export async function updateProfile(userId, updates) {
  * Upsert profile (insert or update) - for users created before the trigger existed
  */
 export async function upsertProfile(userId, defaults = {}) {
+    if (!supabase) {
+        throw new Error('Supabase not configured');
+    }
     const { data, error } = await supabase
         .from('profiles')
         .upsert(
@@ -74,6 +122,9 @@ const AVATARS_BUCKET = 'avatars';
  * Requires an "avatars" bucket with public read and policy: authenticated users can upload to their own path.
  */
 export async function uploadAvatar(userId, file) {
+    if (!supabase) {
+        throw new Error('Supabase not configured');
+    }
     const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
     const path = `${userId}/avatar.${ext}`;
 

@@ -9,6 +9,7 @@ import InvoiceGenerator from './components/InvoiceGenerator';
 import LoginPage from './components/LoginPage';
 import SignupPage from './components/SignupPage';
 import ProfilePage from './components/ProfilePage';
+import Pricing from './components/Pricing';
 import DarkModeToggle from './components/DarkModeToggle';
 import './index.css';
 import './App.css';
@@ -56,7 +57,7 @@ function App() {
       {currentPage === 'home' && <HomePage setCurrentPage={setCurrentPage} user={user} />}
       {currentPage === 'about' && <AboutPage setCurrentPage={setCurrentPage} />}
       {currentPage === 'contact' && <ContactPage setCurrentPage={setCurrentPage} />}
-      {currentPage === 'invoice' && user && <InvoiceGenerator />}
+      {currentPage === 'invoice' && user && <InvoiceGenerator user={user} setCurrentPage={setCurrentPage} />}
       {currentPage === 'login' && (
         <LoginPage
           setCurrentPage={setCurrentPage}
@@ -71,6 +72,9 @@ function App() {
       )}
       {currentPage === 'profile' && (
         <ProfilePage user={user} setCurrentPage={setCurrentPage} onLogout={handleLogout} />
+      )}
+      {currentPage === 'pricing' && (
+        <Pricing setCurrentPage={setCurrentPage} user={user} />
       )}
 
       <Footer setCurrentPage={setCurrentPage} />

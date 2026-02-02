@@ -1,38 +1,129 @@
-# React + Vite
+# Invigen - Invoice Generator SaaS
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern, professional invoice generation platform built with React, Vite, and Supabase.
 
-Currently, two official plugins are available:
+## 🎯 Current Status: Phase 8 - Launch Readiness
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Invigen is a subscription-based SaaS application for creating professional invoices. The app features:
+- **FREE Plan**: Preview invoices, up to 10 invoices/month, watermark included
+- **PRO Plan**: Unlimited invoices, PDF downloads, email sending, watermark removal, custom branding
 
-## React Compiler
+## 🚀 Quick Start
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Prerequisites
+- Node.js 18+
+- npm or yarn
+- Supabase account and project
+- Paystack account (for payments)
 
-## Changing the logo
+### Installation
 
-The logo is used in three places. Use the same image (or different ones) as needed:
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/felixnhackman/invigen-app.git
+   cd invigen-app
+   ```
 
-| Where it appears | File to replace |
-|------------------|-----------------|
-| **Navbar** (top of the site) | `src/assets/logo.png` — replace with your logo (keep the name `logo.png` or update the import in `src/components/Navbar.jsx`). |
-| **Browser tab (favicon)** | `src/assets/mylogo.png` — replace with your icon, or change the link in `index.html` (line 6) to point to another file. |
-| **PWA / Install icon** (Start Menu, app window, “Add to Home Screen”) | `public/logo.png` — replace with your logo. For best install icons use a square image; 192×192 or 512×512 px works well. |
+2. **Install dependencies**
+   ```bash
+   npm install
+   cd backend && npm install && cd ..
+   ```
 
-**One logo everywhere:** Replace all three with the same file (or keep `logo.png` in both `src/assets/` and `public/` in sync). Then run `npm run build` again so the PWA uses the new icon.
+3. **Set up environment variables**
+   
+   Create `.env` in root:
+   ```env
+   VITE_SUPABASE_URL=your_supabase_url
+   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+   VITE_API_URL=http://localhost:5000
+   VITE_PAYSTACK_PUBLIC_KEY=your_paystack_public_key
+   ```
+   
+   Create `backend/.env`:
+   ```env
+   PORT=5000
+   SUPABASE_URL=your_supabase_url
+   SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+   PAYSTACK_SECRET_KEY=your_paystack_secret_key
+   CORS_ORIGIN=http://localhost:5173
+   ```
 
-## PWA (Progressive Web App)
+4. **Set up database**
+   - Run SQL migrations from `backend/supabase-migration.sql` in Supabase SQL Editor
+   - Ensure RLS policies are configured
 
-The app is set up as a PWA so users can install it and use it offline where possible.
+5. **Start development servers**
+   ```bash
+   # Terminal 1: Frontend
+   npm run dev
+   
+   # Terminal 2: Backend
+   cd backend && npm start
+   ```
 
-- **Manifest**: App name (Invigen), theme color, standalone display, icons.
-- **Service worker**: Auto-update; caches JS, CSS, HTML, and images. Supabase API responses use a NetworkFirst cache.
-- **Icons**: `public/logo.png` is used for install and splash. For best results, add `public/icon-192.png` (192×192) and `public/icon-512.png` (512×512) and update `vite.config.js` manifest icons to use them.
+## 📋 Launch Checklist
 
-After `npm run build`, deploy over HTTPS; then “Install” / “Add to Home Screen” will be available in supported browsers.
+See [LAUNCH.md](./LAUNCH.md) for complete pre-launch checklist including:
+- Environment variables
+- Supabase configuration
+- Paystack setup
+- Security checks
+- Feature testing
 
-## Expanding the ESLint configuration
+## 🏗️ Architecture
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### Frontend
+- **React + Vite**: Modern React with fast HMR
+- **Tailwind CSS**: Utility-first styling
+- **Supabase Auth**: User authentication
+- **EmailJS**: Email sending service
+- **@react-pdf/renderer**: PDF generation
+
+### Backend
+- **Express.js**: REST API server
+- **Supabase**: Database and auth
+- **Paystack**: Payment processing
+- **Node.js**: Runtime environment
+
+## 📦 Features
+
+### Subscription System
+- FREE and PRO plans
+- Backend-enforced limits
+- Paystack payment integration
+- Subscription lifecycle management
+
+### Invoice Features
+- Professional invoice templates
+- Custom branding (PRO)
+- PDF download (PRO)
+- Email sending (PRO)
+- Watermark removal (PRO)
+- Multiple currencies
+
+## 🔒 Security
+
+- Backend is the source of truth for subscriptions
+- All premium features validated server-side
+- RLS policies protect user data
+- Webhook signature verification
+- No client-side subscription assumptions
+
+## 📝 Known Limitations
+
+- Yearly billing UI-only (not yet implemented)
+- Subscription API integration pending (Phase 8 TODO)
+- Payment processing placeholder (ready for Paystack integration)
+
+## 🚀 Deployment
+
+See [LAUNCH.md](./LAUNCH.md) for deployment instructions and production checklist.
+
+## 📄 License
+
+[Add your license here]
+
+## 🤝 Contributing
+
+[Add contribution guidelines here]

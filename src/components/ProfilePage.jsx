@@ -1,8 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { User, Mail, Phone, ArrowLeft, LogOut, Edit2, Save, Camera } from 'lucide-react';
+import { User, Mail, Phone, ArrowLeft, LogOut, Edit2, Save, Camera, Crown, TrendingUp, CheckCircle, XCircle } from 'lucide-react';
 import { getProfile, updateProfile, upsertProfile, uploadAvatar } from '../lib/supabase';
+import { useSubscription } from '../hooks/useSubscription';
 
 const ProfilePage = ({ user, setCurrentPage, onLogout }) => {
+    // PHASE 8.6: Subscription hook for plan and usage info
+    const { plan, isPro, isFree, invoiceCount, invoiceLimit, isLoading: subscriptionLoading } = useSubscription();
+    
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -219,6 +223,70 @@ const ProfilePage = ({ user, setCurrentPage, onLogout }) => {
                                         )}
                                     </div>
                                 </div>
+
+                                {/* PHASE 8.6: Current Plan */}
+                                <div className="flex items-center gap-3 p-4 rounded-xl bg-gray-800/50 border border-gray-700">
+                                    <Crown className={`w-5 h-5 flex-shrink-0 ${isPro ? 'text-yellow-400' : 'text-gray-500'}`} />
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-xs text-gray-500 uppercase tracking-wide">Current Plan</p>
+                                        {subscriptionLoading ? (
+                                            <p className="text-gray-400 text-sm mt-1">Loading...</p>
+                                        ) : (
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className={`text-white font-semibold ${isPro ? 'text-yellow-400' : ''}`}>
+                                                    {plan === 'pro' ? 'PRO' : 'FREE'}
+                                                </span>
+                                                {isPro && (
+                                                    <span className="px-2 py-0.5 bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-xs font-bold rounded-full">
+                                                        Active
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* PHASE 8.6: Invoice Usage */}
+                                <div className="flex items-center gap-3 p-4 rounded-xl bg-gray-800/50 border border-gray-700">
+                                    <TrendingUp className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-xs text-gray-500 uppercase tracking-wide">Invoice Usage</p>
+                                        {subscriptionLoading ? (
+                                            <p className="text-gray-400 text-sm mt-1">Loading...</p>
+                                        ) : (
+                                            <p className="text-white font-medium mt-1">
+                                                {isPro ? (
+                                                    <span className="text-green-400">Unlimited</span>
+                                                ) : (
+                                                    <span>
+                                                        {invoiceCount} / {invoiceLimit} invoices this month
+                                                    </span>
+                                                )}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* PHASE 8.6: Subscription Status */}
+                                <div className="flex items-center gap-3 p-4 rounded-xl bg-gray-800/50 border border-gray-700">
+                                    {isPro ? (
+                                        <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
+                                    ) : (
+                                        <XCircle className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                                    )}
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-xs text-gray-500 uppercase tracking-wide">Subscription Status</p>
+                                        {subscriptionLoading ? (
+                                            <p className="text-gray-400 text-sm mt-1">Loading...</p>
+                                        ) : (
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className={`font-medium ${isPro ? 'text-green-400' : 'text-gray-400'}`}>
+                                                    {isPro ? 'Active' : 'Free Plan'}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
 
                             {editing ? (
@@ -248,6 +316,19 @@ const ProfilePage = ({ user, setCurrentPage, onLogout }) => {
                                 </button>
                             )}
                         </>
+                    )}
+
+                    {/* PHASE 8.6: Upgrade to Pro Button (only show for FREE users) */}
+                    {!subscriptionLoading && isFree && (
+                        <div className="mt-6">
+                            <button
+                                onClick={() => setCurrentPage('pricing')}
+                                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold hover:shadow-xl hover:shadow-blue-500/30 transform hover:scale-105 transition-all duration-300"
+                            >
+                                <Crown className="w-4 h-4" />
+                                Upgrade to Pro
+                            </button>
+                        </div>
                     )}
 
                     <div className="mt-8 flex flex-col sm:flex-row gap-3">
