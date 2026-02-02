@@ -30,6 +30,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,jpg,jpeg,svg,woff2}'],
+        globIgnores: ['**/PixelLogo.png'], // Exclude large 9.31 MB file from precaching
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // 3 MB (invigen.jpg is ~2.76 MB)
         runtimeCaching: [
           {
@@ -40,6 +41,16 @@ export default defineConfig({
               expiration: { maxEntries: 50, maxAgeSeconds: 60 * 60 * 24 },
               cacheableResponse: { statuses: [0, 200] },
               networkTimeoutSeconds: 10,
+            },
+          },
+          // Cache PixelLogo.png at runtime if needed (not precached due to size)
+          {
+            urlPattern: /\/PixelLogo\.png$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'large-images-cache',
+              expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 7 }, // 7 days
+              cacheableResponse: { statuses: [0, 200] },
             },
           },
         ],
