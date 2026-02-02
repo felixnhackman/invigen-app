@@ -11,40 +11,67 @@ const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '';
  */
 export function initializePaystackCheckout({
     email,
-    amount, // Amount in kobo (smallest currency unit)
+    amount, // Amount in GHS
     reference,
     metadata = {},
     callback,
     onClose,
 }) {
+    // Check if Paystack public key is configured
     if (!PAYSTACK_PUBLIC_KEY) {
-        throw new Error('Paystack public key not configured');
+        console.error('Paystack public key not configured. Please set VITE_PAYSTACK_PUBLIC_KEY in .env');
+        throw new Error('Paystack public key not configured. Please contact support.');
     }
+
+    // Validate required parameters
+    if (!email || !amount || !reference) {
+        console.error('Missing required Paystack parameters:', { email, amount, reference });
+        throw new Error('Missing required payment information');
+    }
+
+    console.log('Initializing Paystack checkout:', { email, amount, reference });
 
     // Load Paystack inline script if not already loaded
     return new Promise((resolve, reject) => {
         // Check if Paystack script is already loaded
         if (window.PaystackPop) {
+            console.log('Paystack script already loaded');
             handleCheckout();
         } else {
+            console.log('Loading Paystack script...');
             // Load Paystack inline script
             const script = document.createElement('script');
             script.src = 'https://js.paystack.co/v1/inline.js';
             script.async = true;
-            script.onload = () => handleCheckout();
-            script.onerror = () => reject(new Error('Failed to load Paystack script'));
+            script.onload = () => {
+                console.log('Paystack script loaded successfully');
+                handleCheckout();
+            };
+            script.onerror = () => {
+                console.error('Failed to load Paystack script');
+                reject(new Error('Failed to load Paystack payment script. Please check your internet connection.'));
+            };
             document.head.appendChild(script);
         }
 
         function handleCheckout() {
             try {
+                const amountInKobo = Math.round(amount * 100); // Convert GHS to pesewas (kobo)
+                console.log('Opening Paystack checkout:', { 
+                    key: PAYSTACK_PUBLIC_KEY.substring(0, 10) + '...', 
+                    email, 
+                    amount: amountInKobo, 
+                    reference 
+                });
+
                 const handler = window.PaystackPop.setup({
                     key: PAYSTACK_PUBLIC_KEY,
                     email,
-                    amount: amount * 100, // Convert to kobo (Paystack expects amount in kobo)
+                    amount: amountInKobo, // Convert to kobo (Paystack expects amount in kobo)
                     ref: reference,
                     metadata,
                     callback: (response) => {
+                        console.log('Paystack payment successful:', response);
                         // Payment successful
                         if (callback) {
                             callback(response);
@@ -52,6 +79,7 @@ export function initializePaystackCheckout({
                         resolve(response);
                     },
                     onClose: () => {
+                        console.log('Paystack payment popup closed by user');
                         // User closed payment popup
                         if (onClose) {
                             onClose();
@@ -60,8 +88,10 @@ export function initializePaystackCheckout({
                     },
                 });
 
+                console.log('Opening Paystack iframe...');
                 handler.openIframe();
             } catch (error) {
+                console.error('Error setting up Paystack checkout:', error);
                 reject(error);
             }
         }

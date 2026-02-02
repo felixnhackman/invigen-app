@@ -40,11 +40,11 @@ const Pricing = ({ setCurrentPage, user }) => {
         {
             id: 'pro',
             name: 'Pro',
-            price: 99,
-            priceDisplay: '₵99',
+            price: 2,
+            priceDisplay: '₵2',
             period: 'per month',
-            yearlyPrice: 950, // PHASE 7.2: Yearly anchor
-            yearlySavings: 238, // PHASE 7.2: Yearly anchor
+            yearlyPrice: 20, // PHASE 7.2: Yearly anchor (updated for ₵2)
+            yearlySavings: 4, // PHASE 7.2: Yearly anchor (updated for ₵2)
             description: 'For professionals and small businesses',
             icon: <Crown className="w-6 h-6" />,
             features: [
@@ -137,9 +137,10 @@ const Pricing = ({ setCurrentPage, user }) => {
             });
 
             // Initialize Paystack checkout
+            console.log('Starting Paystack checkout for:', { email: userEmail, amount: selectedPlan.price, reference });
             await initializePaystackCheckout({
                 email: userEmail,
-                amount: selectedPlan.price, // Amount in GHS
+                amount: selectedPlan.price, // Amount in GHS (₵2)
                 reference,
                 metadata: {
                     userId: authUser.id,
@@ -154,6 +155,7 @@ const Pricing = ({ setCurrentPage, user }) => {
                     ]
                 },
                 callback: async (response) => {
+                    console.log('Paystack callback received:', response);
                     // Payment successful - verify with backend
                     try {
                         setIsProcessing(true);
@@ -209,13 +211,24 @@ const Pricing = ({ setCurrentPage, user }) => {
                 }
             });
         } catch (error) {
+            console.error('Payment initialization error:', error);
             setIsProcessing(false);
+            const errorMessage = error.message || 'Failed to initialize payment. Please try again.';
+            
+            // Provide helpful error messages
+            let userMessage = errorMessage;
+            if (errorMessage.includes('public key not configured')) {
+                userMessage = 'Payment system not configured. Please contact support.';
+            } else if (errorMessage.includes('Failed to load Paystack')) {
+                userMessage = 'Unable to load payment system. Please check your internet connection and try again.';
+            }
+            
             showNotification({
                 type: 'error',
                 title: 'Payment Error',
-                message: error.message || 'Failed to initialize payment. Please try again.',
+                message: userMessage,
                 autoClose: true,
-                autoCloseDelay: 5000
+                autoCloseDelay: 8000
             });
         }
     };

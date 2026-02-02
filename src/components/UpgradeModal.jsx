@@ -105,7 +105,7 @@ const UpgradeModal = ({ isOpen, onClose, featureName, setCurrentPage }) => {
                             onClick={handleUpgrade}
                             className="w-full px-4 py-4 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-xl font-semibold hover:shadow-xl hover:shadow-blue-500/30 transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
                         >
-                            Upgrade to Pro — ₵99/month
+                            Upgrade to Pro — ₵2/month
                             <ArrowRight className="w-4 h-4" />
                         </button>
                         <p className="text-center text-xs text-gray-500">

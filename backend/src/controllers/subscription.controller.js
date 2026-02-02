@@ -155,8 +155,8 @@ export async function verifyPayment(req, res) {
             });
         }
 
-        // Verify amount matches expected (₵99 = 9900 kobo)
-        const expectedAmount = 9900; // ₵99 in kobo
+        // Verify amount matches expected (₵2 = 200 kobo)
+        const expectedAmount = 200; // ₵2 in kobo
         const paidAmount = paystackData.data.amount;
         if (paidAmount !== expectedAmount) {
             console.error(`Amount mismatch: expected ${expectedAmount}, got ${paidAmount}`);
