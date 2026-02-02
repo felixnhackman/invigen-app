@@ -67,7 +67,8 @@ export function initializePaystackCheckout({
                 const handler = window.PaystackPop.setup({
                     key: PAYSTACK_PUBLIC_KEY,
                     email,
-                    amount: amountInKobo, // Convert to kobo (Paystack expects amount in kobo)
+                    amount: amountInKobo, // Convert to pesewas (Paystack expects amount in smallest currency unit)
+                    currency: 'GHS', // CRITICAL: Explicitly set currency to Ghana Cedis
                     ref: reference,
                     metadata,
                     callback: (response) => {
