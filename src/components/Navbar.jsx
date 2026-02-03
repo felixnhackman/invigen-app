@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Menu, X, ArrowRight, User, UserPlus, ChevronDown, LogOut } from 'lucide-react';
-import logo from '../assets/logo.png';
 import { useSubscription } from '../hooks/useSubscription';
 
 const Navbar = ({ currentPage, setCurrentPage, user, onLogout }) => {
@@ -83,11 +82,7 @@ const Navbar = ({ currentPage, setCurrentPage, user, onLogout }) => {
             }`}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center h-20">
-                    <img
-                        className="h-16 w-auto object-contain object-left"
-                        src={logo}
-                        alt="Invigen Logo"
-                    />
+                    <span className="text-xl font-semibold text-white">Invigen</span>
 
                     {/* Desktop Menu */}
                     <div className="hidden md:flex items-center gap-2">
