@@ -1,5 +1,3 @@
-
-
 function Footer() {
 
 
@@ -9,10 +7,10 @@ function Footer() {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:mx-5">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         <div>
-                            <div className="flex items-center mb-4">
-                                <FileText className="h-8 w-8 text-blue-500" />
-                                <span className="ml-2 text-2xl font-bold">Invigen</span>
+                            <div className="mb-4">
+                                <span className="text-2xl font-bold text-white">Invigen</span>
                             </div>
+                            <p className="text-sm text-gray-400 mb-3">by Mayflower</p>
                             <p className="text-gray-400 text-sm">
                                 Simplifying business transactions with professional invoice and receipt generation.
                             </p>
@@ -50,7 +48,6 @@ function Footer() {
 
                     <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-400"><div>
 
-                        <img src="./assets/logo.png" />
                         <p>&copy; {new Date().getFullYear()} Invigen. All rights reserved.</p>
                     </div>
                     </div>

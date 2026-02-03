@@ -194,6 +194,22 @@ const HomePage = ({ setCurrentPage = () => { }, user }) => {
                                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                             </button>
                         </div>
+
+                        {/* Logo marquee */}
+                        <div className="mt-10 w-full overflow-hidden">
+                            <p className="text-sm uppercase tracking-wider text-gray-500 mb-6 text-center">Powered by</p>
+                            <div className="relative flex">
+                                <div className="flex animate-marquee gap-16 pr-16">
+                                    {[...Array(2)].map((_, setIndex) => (
+                                        <div key={setIndex} className="flex shrink-0 gap-16 items-center">
+                                            <img src="/PixelLogo.png" alt="Pixeldesk Solutions" className="h-10 w-auto object-contain opacity-90 hover:opacity-100 transition-opacity" />
+                                            <img src="/eqostack.png" alt="Eqostack" className="h-10 w-auto object-contain opacity-90 hover:opacity-100 transition-opacity" />
+                                            <img src="/mayflower.png" alt="Mayflower" className="h-10 w-auto object-contain opacity-90 hover:opacity-100 transition-opacity" />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -350,7 +366,7 @@ const HomePage = ({ setCurrentPage = () => { }, user }) => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
                         {/* Brand */}
                         <div>
-                            <div className="flex items-center gap-2 mb-4">
+                            <div className="mb-4">
                                 <span className="text-2xl font-bold text-white">Invigen</span>
                             </div>
                             <p className="text-sm mb-3 text-gray-400">by Mayflower</p>

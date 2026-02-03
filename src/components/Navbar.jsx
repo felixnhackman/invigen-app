@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Menu, X, ArrowRight, User, UserPlus, ChevronDown, LogOut } from 'lucide-react';
-import logo from '../assets/logo.png';
 
 const Navbar = ({ currentPage, setCurrentPage, user, onLogout }) => {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -52,7 +51,7 @@ const Navbar = ({ currentPage, setCurrentPage, user, onLogout }) => {
     const scrollToSection = (sectionId) => {
         const element = document.getElementById(sectionId);
         if (element) {
-            const offset = 80; // Height of navbar
+            const offset = 96; // Height of navbar
             const elementPosition = element.getBoundingClientRect().top;
             const offsetPosition = elementPosition + window.pageYOffset - offset;
 
@@ -69,19 +68,8 @@ const Navbar = ({ currentPage, setCurrentPage, user, onLogout }) => {
             : 'bg-transparent'
             }`}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex justify-between items-center h-20">
-                    {/* Logo */}
-                    {/* <button
-                        onClick={() => handleNavClick(navItems[0])}
-                        className="flex items-center gap-3 group"
-                    >
-                        
-                    </button> */}
-                    <img
-                        className="h-16 w-auto object-contain object-left"
-                        src={logo}
-                        alt="Invigen Logo"
-                    />
+                <div className="flex justify-between items-center h-24">
+                    <span className="text-xl font-semibold text-white">Invigen</span>
 
                     {/* Desktop Menu */}
                     <div className="hidden md:flex items-center gap-2">
