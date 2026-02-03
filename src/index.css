@@ -5,10 +5,19 @@ body {
 }
 
 @keyframes marquee {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-50%); }
+    0% { transform: translateX(0) translateZ(0); }
+    100% { transform: translateX(-50%) translateZ(0); }
 }
 
 .animate-marquee {
     animation: marquee 25s linear infinite;
+    will-change: transform;
+}
+
+.animate-marquee-paused {
+    animation-play-state: paused;
+}
+
+.marquee-wrap {
+    contain: layout paint;
 }

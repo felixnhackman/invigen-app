@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     Phone,
     Mail,
@@ -29,6 +29,20 @@ import hero from "../assets/hero.png";
 
 const HomePage = ({ setCurrentPage = () => { }, user }) => {
     const [currentFlyer, setCurrentFlyer] = useState(0);
+    const marqueeRef = useRef(null);
+    const [marqueeInView, setMarqueeInView] = useState(true);
+
+    // Pause marquee animation when off-screen to save CPU/GPU
+    useEffect(() => {
+        const el = marqueeRef.current;
+        if (!el) return;
+        const observer = new IntersectionObserver(
+            ([entry]) => setMarqueeInView(entry.isIntersecting),
+            { threshold: 0.1, rootMargin: '50px' }
+        );
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, []);
 
     const flyers = [
         {
@@ -215,16 +229,16 @@ const HomePage = ({ setCurrentPage = () => { }, user }) => {
                             </button>
                         </div>
 
-                        {/* Logo marquee */}
-                        <div className="mt-10 w-full overflow-hidden">
+                        {/* Logo marquee - GPU-accelerated, pauses when off-screen */}
+                        <div ref={marqueeRef} className="marquee-wrap mt-10 w-full overflow-hidden">
                             <p className="text-sm uppercase tracking-wider text-gray-500 mb-6 text-center">Powered by</p>
                             <div className="relative flex">
-                                <div className="flex animate-marquee gap-16 pr-16">
+                                <div className={`flex animate-marquee gap-16 pr-16 ${!marqueeInView ? 'animate-marquee-paused' : ''}`}>
                                     {[...Array(2)].map((_, setIndex) => (
                                         <div key={setIndex} className="flex shrink-0 gap-16 items-center">
-                                            <img src="/PixelLogo.png" alt="Pixeldesk Solutions" className="h-10 w-auto object-contain opacity-90 hover:opacity-100 transition-opacity" />
-                                            <img src="/eqostack.png" alt="Eqostack" className="h-10 w-auto object-contain opacity-90 hover:opacity-100 transition-opacity" />
-                                            <img src="/mayflower.png" alt="Mayflower" className="h-10 w-auto object-contain opacity-90 hover:opacity-100 transition-opacity" />
+                                            <img src="/PixelLogo.png" alt="Pixeldesk Solutions" decoding="async" className="h-10 w-auto object-contain opacity-90 hover:opacity-100 transition-opacity" />
+                                            <img src="/eqostack.png" alt="Eqostack" decoding="async" className="h-10 w-auto object-contain opacity-90 hover:opacity-100 transition-opacity" />
+                                            <img src="/mayflower.png" alt="Mayflower" decoding="async" className="h-10 w-auto object-contain opacity-90 hover:opacity-100 transition-opacity" />
                                         </div>
                                     ))}
                                 </div>
