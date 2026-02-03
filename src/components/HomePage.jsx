@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Phone,
     Mail,
@@ -52,6 +52,12 @@ const HomePage = ({ setCurrentPage = () => { }, user }) => {
     const prevFlyer = () => {
         setCurrentFlyer((prev) => (prev - 1 + flyers.length) % flyers.length);
     };
+
+    // Auto-advance carousel every 5 seconds
+    useEffect(() => {
+        const interval = setInterval(nextFlyer, 5000);
+        return () => clearInterval(interval);
+    }, [flyers.length]);
 
     const FlyersShowcase = () => {
         const getPrevIndex = () => (currentFlyer - 1 + flyers.length) % flyers.length;
@@ -124,7 +130,21 @@ const HomePage = ({ setCurrentPage = () => { }, user }) => {
                             </div>
                         </div>
 
-
+                        {/* Dot indicators */}
+                        <div className="flex justify-center gap-2 mt-6">
+                            {flyers.map((_, index) => (
+                                <button
+                                    key={index}
+                                    onClick={() => setCurrentFlyer(index)}
+                                    className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
+                                        index === currentFlyer
+                                            ? 'bg-gray-900 scale-125'
+                                            : 'bg-gray-400 hover:bg-gray-600'
+                                    }`}
+                                    aria-label={`Go to slide ${index + 1}`}
+                                />
+                            ))}
+                        </div>
                     </div>
                 </div>
             </section>
