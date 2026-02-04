@@ -7,6 +7,17 @@ import { resolve } from "path";
 
 // https://vite.dev/config/
 export default defineConfig({
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          supabase: ['@supabase/supabase-js'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 600,
+  },
   plugins: [
     react(),
     tailwindcss(),
@@ -33,8 +44,12 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,jpg,jpeg,svg,woff2}'],
-        globIgnores: ['**/PixelLogo.png'], // Exclude large 9.31 MB file from precaching
-        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // 3 MB (invigen.jpg is ~2.76 MB)
+        globIgnores: ['**/PixelLogo.png'],
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+        // Cache static assets for 30 days so repeat visits load from cache
+        cleanupOutdatedCaches: true,
+        skipWaiting: true,
+        clientsClaim: true,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
@@ -52,7 +67,16 @@ export default defineConfig({
             handler: 'CacheFirst',
             options: {
               cacheName: 'large-images-cache',
-              expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 7 }, // 7 days
+              expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 7 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            urlPattern: /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\/.*/i,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'google-fonts-cache',
+              expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 },
               cacheableResponse: { statuses: [0, 200] },
             },
           },
