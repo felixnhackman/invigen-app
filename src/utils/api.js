@@ -43,15 +43,22 @@ export async function authenticatedFetch(endpoint, options = {}) {
     if (response.status === 401) {
         // Try to refresh session
         if (supabase) {
-            const { data: { session }, error } = await supabase.auth.refreshSession();
-            if (session && !error) {
-                // Retry request with new token
-                const newToken = session.access_token;
-                headers['Authorization'] = `Bearer ${newToken}`;
-                return fetch(`${API_BASE_URL}${endpoint}`, {
-                    ...options,
-                    headers,
-                });
+            try {
+                const { data: { session }, error } = await supabase.auth.refreshSession();
+                if (session && !error) {
+                    // Retry request with new token
+                    const newToken = session.access_token;
+                    headers['Authorization'] = `Bearer ${newToken}`;
+                    return fetch(`${API_BASE_URL}${endpoint}`, {
+                        ...options,
+                        headers,
+                    });
+                }
+            } catch (e) {
+                if (e?.name === 'AbortError') {
+                    throw new Error('SESSION_EXPIRED');
+                }
+                throw e;
             }
         }
         // If refresh failed, throw error

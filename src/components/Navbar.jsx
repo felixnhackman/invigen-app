@@ -80,9 +80,9 @@ const Navbar = ({ currentPage, setCurrentPage, user, onLogout }) => {
             ? 'bg-gray-950/80 backdrop-blur-lg border-b border-gray-800'
             : 'bg-transparent'
             }`}>
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex justify-between items-center h-20">
-                    <span className="text-xl font-semibold text-white">Invigen</span>
+            <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+                <div className="flex justify-between items-center min-h-14 sm:min-h-16 md:h-20">
+                    <span className="text-lg sm:text-xl font-semibold text-white truncate">Invigen</span>
 
                     {/* Desktop Menu */}
                     <div className="hidden md:flex items-center gap-2">
@@ -159,11 +159,12 @@ const Navbar = ({ currentPage, setCurrentPage, user, onLogout }) => {
                         </button>
                     </div>
 
-                    {/* Mobile Menu Button */}
-                    <div className="md:hidden">
+                    {/* Mobile Menu Button - touch-friendly */}
+                    <div className="md:hidden flex items-center">
                         <button
                             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                            className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+                            className="p-3 -mr-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
+                            aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
                         >
                             {mobileMenuOpen ? (
                                 <X className="h-6 w-6" />
@@ -178,12 +179,12 @@ const Navbar = ({ currentPage, setCurrentPage, user, onLogout }) => {
             {/* Mobile Menu */}
             {mobileMenuOpen && (
                 <div className="md:hidden bg-gray-900 border-t border-gray-800 shadow-lg">
-                    <div className="px-4 py-4 space-y-2">
+                    <div className="px-4 py-3 space-y-1">
                         {navItems.map((item) => (
                             <button
                                 key={item.id}
                                 onClick={() => handleNavClick(item)}
-                                className="text-gray-400 hover:bg-gray-800 hover:text-white block w-full text-left px-4 py-3 rounded-lg text-base transition-colors"
+                                className="text-gray-400 hover:bg-gray-800 hover:text-white block w-full text-left px-4 py-3.5 rounded-lg text-base transition-colors min-h-[44px] flex items-center touch-manipulation"
                             >
                                 {item.name}
                             </button>
@@ -193,7 +194,7 @@ const Navbar = ({ currentPage, setCurrentPage, user, onLogout }) => {
                         {shouldShowPricing && (
                             <button
                                 onClick={handlePricingClick}
-                                className="text-gray-400 hover:bg-gray-800 hover:text-white block w-full text-left px-4 py-3 rounded-lg text-base transition-colors"
+                                className="text-gray-400 hover:bg-gray-800 hover:text-white block w-full text-left px-4 py-3.5 rounded-lg text-base transition-colors min-h-[44px] flex items-center touch-manipulation"
                             >
                                 Pricing
                             </button>
@@ -204,14 +205,14 @@ const Navbar = ({ currentPage, setCurrentPage, user, onLogout }) => {
                             <div className="py-2 space-y-1">
                                 <button
                                     onClick={() => { setCurrentPage('profile'); setMobileMenuOpen(false); }}
-                                    className="w-full inline-flex items-center justify-center gap-2 text-gray-400 hover:bg-gray-800 hover:text-white px-4 py-3 rounded-lg"
+                                    className="w-full inline-flex items-center justify-center gap-2 text-gray-400 hover:bg-gray-800 hover:text-white px-4 py-3.5 rounded-lg min-h-[44px] touch-manipulation"
                                 >
                                     <User className="w-4 h-4" />
                                     View profile
                                 </button>
                                 <button
                                     onClick={() => { onLogout?.(); setMobileMenuOpen(false); }}
-                                    className="w-full inline-flex items-center justify-center gap-2 text-red-400 hover:bg-red-500/10 px-4 py-3 rounded-lg"
+                                    className="w-full inline-flex items-center justify-center gap-2 text-red-400 hover:bg-red-500/10 px-4 py-3.5 rounded-lg min-h-[44px] touch-manipulation"
                                 >
                                     <LogOut className="w-4 h-4" />
                                     Logout
@@ -220,7 +221,7 @@ const Navbar = ({ currentPage, setCurrentPage, user, onLogout }) => {
                         ) : (
                             <button
                                 onClick={() => { setCurrentPage('signup'); setMobileMenuOpen(false); }}
-                                className="w-full py-2 inline-flex items-center justify-center gap-2 text-gray-400 hover:bg-gray-800 hover:text-white px-4 py-3 rounded-lg border border-gray-600"
+                                className="w-full inline-flex items-center justify-center gap-2 text-gray-400 hover:bg-gray-800 hover:text-white px-4 py-3.5 rounded-lg border border-gray-600 min-h-[44px] touch-manipulation"
                             >
                                 <UserPlus className="w-4 h-4" />
                                 Sign up
@@ -234,7 +235,7 @@ const Navbar = ({ currentPage, setCurrentPage, user, onLogout }) => {
                                 else setCurrentPage('signup');
                                 setMobileMenuOpen(false);
                             }}
-                            className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-cyan-500 text-white px-6 py-3 rounded-xl text-base font-semibold mt-2 hover:shadow-lg hover:shadow-blue-500/30 transition-all"
+                            className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-cyan-500 text-white px-6 py-3.5 rounded-xl text-base font-semibold mt-2 hover:shadow-lg hover:shadow-blue-500/30 transition-all min-h-[48px] touch-manipulation"
                         >
                             Generate Invoice
                             <ArrowRight className="w-4 h-4" />

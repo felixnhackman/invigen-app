@@ -22,8 +22,13 @@ export async function getAuthToken() {
     if (!supabase) {
         return null;
     }
-    const { data: { session } } = await supabase.auth.getSession();
-    return session?.access_token || null;
+    try {
+        const { data: { session } } = await supabase.auth.getSession();
+        return session?.access_token || null;
+    } catch (e) {
+        if (e?.name === 'AbortError') return null;
+        throw e;
+    }
 }
 
 /**
@@ -34,14 +39,19 @@ export async function getAuthUser() {
     if (!supabase) {
         return null;
     }
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) {
-        return null;
+    try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) {
+            return null;
+        }
+        return {
+            id: session.user.id,
+            email: session.user.email || ''
+        };
+    } catch (e) {
+        if (e?.name === 'AbortError') return null;
+        throw e;
     }
-    return {
-        id: session.user.id,
-        email: session.user.email || ''
-    };
 }
 
 /**

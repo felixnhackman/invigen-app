@@ -20,16 +20,35 @@ function App() {
   const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ? supabaseUserToAppUser(session.user) : null);
+    if (!supabase) {
       setAuthChecked(true);
-    });
+      return;
+    }
+
+    let cancelled = false;
+
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        if (!cancelled) {
+          setUser(session?.user ? supabaseUserToAppUser(session.user) : null);
+          setAuthChecked(true);
+        }
+      })
+      .catch((err) => {
+        if (err?.name === 'AbortError') return;
+        setAuthChecked(true);
+      });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ? supabaseUserToAppUser(session.user) : null);
+      if (!cancelled) {
+        setUser(session?.user ? supabaseUserToAppUser(session.user) : null);
+      }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      subscription?.unsubscribe();
+    };
   }, []);
 
   // Redirect to signup if guest tries to open invoice page (after auth has been checked)
@@ -46,7 +65,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen overflow-x-hidden">
       <Navbar
         currentPage={currentPage}
         setCurrentPage={setCurrentPage}

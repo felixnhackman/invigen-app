@@ -78,20 +78,20 @@ const HomePage = ({ setCurrentPage = () => { }, user }) => {
         const getNextIndex = () => (currentFlyer + 1) % flyers.length;
 
         return (
-            <section className="py-24 bg-gray-50">
+            <section className="py-12 sm:py-16 lg:py-24 bg-gray-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="text-center mb-16">
-                        <h2 className="text-4xl sm:text-5xl font-bold mb-4 text-gray-500">
+                    <div className="text-center mb-8 sm:mb-16">
+                        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4 text-gray-500 px-2">
                             Our <span className="text-gray-900">Marketing</span> Gallery
                         </h2>
-                        <p className="text-xl text-gray-900 max-w-3xl mx-auto">
+                        <p className="text-base sm:text-xl text-gray-900 max-w-3xl mx-auto px-2">
                             Explore our creative designs and promotional materials
                         </p>
                     </div>
 
                     <div className="relative max-w-7xl mx-auto">
-                        <div className="relative flex items-center justify-center gap-4 overflow-hidden py-8 ease-in">
-                            {/* Previous Flyer (Left) */}
+                        <div className="relative flex items-center justify-center gap-2 sm:gap-4 overflow-hidden py-4 sm:py-8 ease-in">
+                            {/* Previous Flyer (Left) - hidden on mobile */}
                             <div className="hidden md:block w-64 h-fit opacity-30 hover:opacity-50 transition-all duration-300 cursor-pointer flex-shrink-0"
                                 onClick={prevFlyer}>
                                 <div className="relative rounded-xl overflow-hidden bg-gray-800 h-full shadow-lg ease-in">
@@ -104,34 +104,34 @@ const HomePage = ({ setCurrentPage = () => { }, user }) => {
                             </div>
 
                             {/* Current Flyer (Center) */}
-                            <div className="w-full md:w-fit h-fit md:h-[600px] flex-shrink-0 transition-all duration-500 ease-in-out">
-                                <div className="relative rounded-2xl overflow-hidden bg-gray-800 shadow-lg h-full">
+                            <div className="w-full md:w-fit h-fit max-h-[70vh] md:max-h-none md:h-[600px] flex-shrink-0 transition-all duration-500 ease-in-out">
+                                <div className="relative rounded-xl sm:rounded-2xl overflow-hidden bg-gray-800 shadow-lg h-full">
                                     <img
                                         src={flyers[currentFlyer].image}
                                         alt={flyers[currentFlyer].title}
                                         className="w-full h-full object-contain"
                                     />
 
-                                    {/* Navigation Arrows */}
+                                    {/* Navigation Arrows - touch-friendly on mobile */}
                                     <button
                                         onClick={prevFlyer}
-                                        className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full hover:bg-black/70 backdrop-blur-sm flex items-center justify-center transition-all duration-300 hover:scale-110 group z-10"
+                                        className="absolute left-1 sm:left-4 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-sm flex items-center justify-center transition-all duration-300 active:scale-95 group z-10 touch-manipulation"
                                         aria-label="Previous flyer"
                                     >
-                                        <ChevronLeft className="w-6 h-6 text-white group-hover:text-blue-400 transition-colors" />
+                                        <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 text-white group-hover:text-blue-400 transition-colors" />
                                     </button>
 
                                     <button
                                         onClick={nextFlyer}
-                                        className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full hover:bg-black/70 backdrop-blur-sm flex items-center justify-center transition-all duration-300 hover:scale-110 group z-10"
+                                        className="absolute right-1 sm:right-4 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-sm flex items-center justify-center transition-all duration-300 active:scale-95 group z-10 touch-manipulation"
                                         aria-label="Next flyer"
                                     >
-                                        <ChevronRight className="w-6 h-6 text-white group-hover:text-blue-400 transition-colors" />
+                                        <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6 text-white group-hover:text-blue-400 transition-colors" />
                                     </button>
                                 </div>
                             </div>
 
-                            {/* Next Flyer (Right) */}
+                            {/* Next Flyer (Right) - hidden on mobile */}
                             <div className="hidden md:block md:w-fit h-[400px] opacity-30 hover:opacity-50 transition-all duration-600 cursor-pointer flex-shrink-0"
                                 onClick={nextFlyer}>
                                 <div className="relative rounded-xl overflow-hidden bg-gray-800 h-full shadow-lg">
@@ -144,13 +144,13 @@ const HomePage = ({ setCurrentPage = () => { }, user }) => {
                             </div>
                         </div>
 
-                        {/* Dot indicators */}
-                        <div className="flex justify-center gap-2 mt-6">
+                        {/* Dot indicators - larger for touch on mobile */}
+                        <div className="flex justify-center gap-2 sm:gap-2 mt-4 sm:mt-6">
                             {flyers.map((_, index) => (
                                 <button
                                     key={index}
                                     onClick={() => setCurrentFlyer(index)}
-                                    className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
+                                    className={`w-3 h-3 sm:w-2.5 sm:h-2.5 rounded-full transition-all duration-300 touch-manipulation ${
                                         index === currentFlyer
                                             ? 'bg-gray-900 scale-125'
                                             : 'bg-gray-400 hover:bg-gray-600'
@@ -203,42 +203,42 @@ const HomePage = ({ setCurrentPage = () => { }, user }) => {
             {/* HERO SECTION */}
             <section
                 id="hero-section"
-                className="relative overflow-hidden bg-fit bg-center h-[600px]" style={{ backgroundImage: `url(${hero})` }}
+                className="relative overflow-hidden bg-fit bg-center min-h-[420px] sm:min-h-[500px] lg:min-h-[600px]" style={{ backgroundImage: `url(${hero})` }}
             >
-                <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-24 absolute inset-0 bg-black/80 backdrop-blur-sm">
+                <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 sm:pt-28 lg:pt-32 pb-12 sm:pb-24 absolute inset-0 bg-black/80 backdrop-blur-sm flex flex-col justify-center">
                     <div className="text-center max-w-4xl mx-auto">
-                        <h1 className="text-5xl sm:text-6xl lg:text-7xl font-semibold mb-6 text-white tracking-tighter">
+                        <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold mb-4 sm:mb-6 text-white tracking-tighter px-1">
                             Simplify Business
                             <span className="bg-gradient-to-r from-blue-600 to-cyan-200 bg-clip-text text-transparent">
                                 {" "}Transactions
                             </span>
                         </h1>
-                        <p className="text-xl sm:text-xl mb-10 leading-relaxed text-gray-400">
+                        <p className="text-base sm:text-xl mb-6 sm:mb-10 leading-relaxed text-gray-400 max-w-xl mx-auto">
                             Generate invoices and receipts in seconds, seamlessly.
-                            <br />
-                            Professional, fast, and incredibly simple.
+                            <span className="hidden sm:inline"><br /></span>
+                            <span className="sm:block">Professional, fast, and incredibly simple.</span>
                         </p>
 
-                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
                             <button
                                 onClick={() => (user ? setCurrentPage('invoice') : setCurrentPage('signup'))}
-                                className="group inline-flex items-center gap-3 bg-gradient-to-r from-blue-600 to-cyan-500 text-white px-10 py-5 rounded-xl text-lg font-semibold hover:shadow-2xl hover:shadow-blue-500/30 transform hover:scale-105 transition-all duration-300"
+                                className="group w-full sm:w-auto inline-flex items-center justify-center gap-2 sm:gap-3 bg-gradient-to-r from-blue-600 to-cyan-500 text-white px-6 py-4 sm:px-10 sm:py-5 rounded-xl text-base sm:text-lg font-semibold hover:shadow-2xl hover:shadow-blue-500/30 transform hover:scale-105 transition-all duration-300"
                             >
                                 Generate Invoice Now
-                                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform shrink-0" />
                             </button>
                         </div>
 
                         {/* Logo marquee - GPU-accelerated, pauses when off-screen */}
-                        <div ref={marqueeRef} className="marquee-wrap mt-10 w-full overflow-hidden">
-                            <p className="text-sm uppercase tracking-wider text-gray-500 mb-6 text-center">Powered by</p>
+                        <div ref={marqueeRef} className="marquee-wrap mt-8 sm:mt-10 w-full overflow-hidden">
+                            <p className="text-xs sm:text-sm uppercase tracking-wider text-gray-500 mb-4 sm:mb-6 text-center">Powered by</p>
                             <div className="relative flex">
-                                <div className={`flex animate-marquee gap-16 pr-16 ${!marqueeInView ? 'animate-marquee-paused' : ''}`}>
+                                <div className={`flex animate-marquee gap-8 sm:gap-16 pr-8 sm:pr-16 ${!marqueeInView ? 'animate-marquee-paused' : ''}`}>
                                     {[...Array(2)].map((_, setIndex) => (
-                                        <div key={setIndex} className="flex shrink-0 gap-16 items-center">
-                                            <img src="/PixelLogo.png" alt="Pixeldesk Solutions" decoding="async" className="h-10 w-auto object-contain opacity-90 hover:opacity-100 transition-opacity" />
-                                            <img src="/eqostack.png" alt="Eqostack" decoding="async" className="h-10 w-auto object-contain opacity-90 hover:opacity-100 transition-opacity" />
-                                            <img src="/mayflower.png" alt="Mayflower" decoding="async" className="h-10 w-auto object-contain opacity-90 hover:opacity-100 transition-opacity" />
+                                        <div key={setIndex} className="flex shrink-0 gap-8 sm:gap-16 items-center">
+                                            <img src="/PixelLogo.png" alt="Pixeldesk Solutions" decoding="async" className="h-8 sm:h-10 w-auto object-contain opacity-90 hover:opacity-100 transition-opacity" />
+                                            <img src="/eqostack.png" alt="Eqostack" decoding="async" className="h-8 sm:h-10 w-auto object-contain opacity-90 hover:opacity-100 transition-opacity" />
+                                            <img src="/mayflower.png" alt="Mayflower" decoding="async" className="h-8 sm:h-10 w-auto object-contain opacity-90 hover:opacity-100 transition-opacity" />
                                         </div>
                                     ))}
                                 </div>
@@ -254,38 +254,38 @@ const HomePage = ({ setCurrentPage = () => { }, user }) => {
             </section>
 
             {/* FEATURES SECTION */}
-            <section className="py-24 bg-gray-950">
+            <section className="py-12 sm:py-16 lg:py-24 bg-gray-950">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="text-center mb-20">
-                        <h2 className="text-4xl sm:text-5xl font-bold mb-4 text-white">
+                    <div className="text-center mb-10 sm:mb-20">
+                        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4 text-white px-2">
                             Key Features of <span className="bg-gradient-to-r from-blue-500 to-cyan-300 bg-clip-text text-transparent"> Invigen</span>
                         </h2>
-                        <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+                        <p className="text-base sm:text-xl text-gray-400 max-w-2xl mx-auto px-2">
                             Each feature crafted to make invoice generation faster, smarter, and more professional.
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        <div className="p-8 rounded-2xl bg-gray-900 border border-gray-800 hover:border-blue-500 transition-all duration-300">
-                            <div className="text-4xl mb-4"><Zap className="w-6 h-6 text-blue-500" /></div>
-                            <h3 className="text-xl font-bold mb-3 text-white">Instant Generation</h3>
-                            <p className="text-gray-400">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+                        <div className="p-5 sm:p-6 lg:p-8 rounded-2xl bg-gray-900 border border-gray-800 hover:border-blue-500 transition-all duration-300">
+                            <div className="text-3xl sm:text-4xl mb-3 sm:mb-4"><Zap className="w-6 h-6 text-blue-500" /></div>
+                            <h3 className="text-lg sm:text-xl font-bold mb-2 sm:mb-3 text-white">Instant Generation</h3>
+                            <p className="text-sm sm:text-base text-gray-400">
                                 Create professional invoices in seconds with our streamlined interface and smart templates.
                             </p>
                         </div>
 
-                        <div className="p-8 rounded-2xl bg-gray-900 border border-gray-800 hover:border-cyan-500 transition-all duration-300">
-                            <div className="text-4xl mb-4"><BadgeCheck className="w-6 h-6 text-blue-500" /></div>
-                            <h3 className="text-xl font-bold mb-3 text-white">Professional Output</h3>
-                            <p className="text-gray-400">
+                        <div className="p-5 sm:p-6 lg:p-8 rounded-2xl bg-gray-900 border border-gray-800 hover:border-cyan-500 transition-all duration-300">
+                            <div className="text-3xl sm:text-4xl mb-3 sm:mb-4"><BadgeCheck className="w-6 h-6 text-blue-500" /></div>
+                            <h3 className="text-lg sm:text-xl font-bold mb-2 sm:mb-3 text-white">Professional Output</h3>
+                            <p className="text-sm sm:text-base text-gray-400">
                                 Clean, polished invoices that enhance your brand image and build client trust.
                             </p>
                         </div>
 
-                        <div className="p-8 rounded-2xl bg-gray-900 border border-gray-800 hover:border-purple-500 transition-all duration-300">
-                            <div className="text-4xl mb-4"><Briefcase className="w-6 h-6 text-blue-500" /></div>
-                            <h3 className="text-xl font-bold mb-3 text-white">Business Ready</h3>
-                            <p className="text-gray-400">
+                        <div className="p-5 sm:p-6 lg:p-8 rounded-2xl bg-gray-900 border border-gray-800 hover:border-purple-500 transition-all duration-300">
+                            <div className="text-3xl sm:text-4xl mb-3 sm:mb-4"><Briefcase className="w-6 h-6 text-blue-500" /></div>
+                            <h3 className="text-lg sm:text-xl font-bold mb-2 sm:mb-3 text-white">Business Ready</h3>
+                            <p className="text-sm sm:text-base text-gray-400">
                                 Perfect for freelancers, small businesses, and enterprises of any size.
                             </p>
                         </div>
@@ -294,26 +294,26 @@ const HomePage = ({ setCurrentPage = () => { }, user }) => {
             </section>
 
             {/* USE CASES / BUSINESS TYPES SECTION */}
-            <section id="use-cases-section" className="py-24 bg-gray-900">
-                <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 ">
-                    <div className="text-center mb-16">
-                        <h2 className="text-4xl sm:text-5xl font-bold mb-4 text-white">
-                            Perfect for Every <span className="inline-block bg-gradient-to-r from-blue-600 to-cyan-500 rounded-2xl p-3">Business</span> Context
+            <section id="use-cases-section" className="py-12 sm:py-16 lg:py-24 bg-gray-900">
+                <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="text-center mb-10 sm:mb-16">
+                        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4 text-white px-2">
+                            Perfect for Every <span className="inline-block bg-gradient-to-r from-blue-600 to-cyan-500 rounded-xl sm:rounded-2xl p-2 sm:p-3 mt-1">Business</span> Context
                         </h2>
-                        <p className="text-xl text-gray-400 max-w-3xl mx-auto">
+                        <p className="text-base sm:text-xl text-gray-400 max-w-3xl mx-auto px-2">
                             Whether you're managing a single client or running an enterprise, our system scales to your needs.
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                         {businessTypes.map((type, idx) => (
                             <div
                                 key={idx}
-                                className="p-6 rounded-xl bg-gray-800 border border-gray-700 hover:border-blue-500 transition-all duration-300 cursor-pointer"
+                                className="p-4 sm:p-6 rounded-xl bg-gray-800 border border-gray-700 hover:border-blue-500 transition-all duration-300 cursor-pointer"
                             >
-                                <div className="mb-3">{type.icon}</div>
-                                <h3 className="text-lg font-semibold mb-2 text-white">{type.title}</h3>
-                                <p className="text-sm text-gray-400">{type.description}</p>
+                                <div className="mb-2 sm:mb-3">{type.icon}</div>
+                                <h3 className="text-base sm:text-lg font-semibold mb-1 sm:mb-2 text-white">{type.title}</h3>
+                                <p className="text-xs sm:text-sm text-gray-400">{type.description}</p>
                             </div>
                         ))}
                     </div>
@@ -324,13 +324,13 @@ const HomePage = ({ setCurrentPage = () => { }, user }) => {
             <FlyersShowcase />
 
             {/* TESTIMONIALS SECTION */}
-            <section className="py-24 bg-gray-950">
+            <section className="py-12 sm:py-16 lg:py-24 bg-gray-950">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="text-center mb-16">
-                        <h2 className="text-4xl sm:text-5xl font-bold mb-4 text-white">Trusted by Professionals</h2>
+                    <div className="text-center mb-10 sm:mb-16">
+                        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 text-white px-2">Trusted by Professionals</h2>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
                         {[
                             {
                                 name: 'Sarah Johnson',
@@ -351,8 +351,8 @@ const HomePage = ({ setCurrentPage = () => { }, user }) => {
                                     'The professional look of our invoices has improved our brand image significantly.'
                             }
                         ].map((testimonial, idx) => (
-                            <div key={idx} className="p-8 rounded-2xl bg-gray-800 border border-gray-700">
-                                <p className="text-lg mb-6 italic text-gray-300">"{testimonial.quote}"</p>
+                            <div key={idx} className="p-5 sm:p-6 lg:p-8 rounded-2xl bg-gray-800 border border-gray-700">
+                                <p className="text-base sm:text-lg mb-4 sm:mb-6 italic text-gray-300">"{testimonial.quote}"</p>
                                 <div className="flex items-center">
                                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white font-bold text-lg mr-4">
                                         {testimonial.name[0]}
@@ -369,25 +369,25 @@ const HomePage = ({ setCurrentPage = () => { }, user }) => {
             </section>
 
             {/* CONTACT SECTION */}
-            <section id="contact-section" className="py-24 bg-gray-900">
+            <section id="contact-section" className="py-12 sm:py-16 lg:py-24 bg-gray-900">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                    <h2 className="text-4xl sm:text-5xl font-bold mb-4 text-white">Get in Touch</h2>
-                    <p className="text-xl mb-12 text-gray-400">Have questions or need support? We're here to help.</p>
+                    <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4 text-white px-2">Get in Touch</h2>
+                    <p className="text-base sm:text-xl mb-8 sm:mb-12 text-gray-400 px-2">Have questions or need support? We're here to help.</p>
 
-                    <div className="flex flex-col sm:flex-row justify-center items-center gap-6">
+                    <div className="flex flex-col sm:flex-row justify-center items-stretch sm:items-center gap-4 sm:gap-6">
                         <a
                             href="mailto:pixeldesksolutions@gmail.com"
-                            className="inline-flex items-center gap-3 px-8 py-4 rounded-xl bg-gray-800 hover:bg-gray-750 text-white border border-gray-700 transition-all duration-300 font-medium"
+                            className="inline-flex items-center justify-center gap-2 sm:gap-3 px-4 py-3 sm:px-8 sm:py-4 rounded-xl bg-gray-800 hover:bg-gray-750 text-white border border-gray-700 transition-all duration-300 font-medium text-sm sm:text-base break-all"
                         >
-                            <Mail className="w-5 h-5" />
-                            pixeldesksolutions@gmail.com
+                            <Mail className="w-5 h-5 shrink-0" />
+                            <span className="break-all">pixeldesksolutions@gmail.com</span>
                         </a>
 
                         <a
                             href="tel:+23359377115"
-                            className="inline-flex items-center gap-3 px-8 py-4 rounded-xl bg-gray-800 hover:bg-gray-750 text-white border border-gray-700 transition-all duration-300 font-medium"
+                            className="inline-flex items-center justify-center gap-2 sm:gap-3 px-4 py-3 sm:px-8 sm:py-4 rounded-xl bg-gray-800 hover:bg-gray-750 text-white border border-gray-700 transition-all duration-300 font-medium text-sm sm:text-base whitespace-nowrap"
                         >
-                            <Phone className="w-5 h-5" />
+                            <Phone className="w-5 h-5 shrink-0" />
                             +233 593-77-115
                         </a>
                     </div>
@@ -396,27 +396,27 @@ const HomePage = ({ setCurrentPage = () => { }, user }) => {
 
             {/* FOOTER */}
             <footer className="bg-black border-t border-gray-900">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 sm:gap-12 mb-8 sm:mb-12 text-center md:text-left">
                         {/* Brand */}
                         <div>
-                            <div className="mb-4">
-                                <span className="text-2xl font-bold text-white">Invigen</span>
+                            <div className="mb-3 sm:mb-4">
+                                <span className="text-xl sm:text-2xl font-bold text-white">Invigen</span>
                             </div>
-                            <p className="text-sm mb-3 text-gray-400">by Mayflower</p>
+                            <p className="text-sm mb-2 sm:mb-3 text-gray-400">by Mayflower</p>
                             <p className="text-sm text-gray-500">Simplifying business transactions for everyone.</p>
                         </div>
 
                         {/* Contact */}
                         <div>
-                            <h3 className="text-sm font-semibold uppercase tracking-wider mb-4 text-gray-400">Contact</h3>
-                            <div className="space-y-3">
-                                <a href="mailto:pixeldesksolutions@gmail.com" className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors">
-                                    <Mail className="w-4 h-4" />
+                            <h3 className="text-sm font-semibold uppercase tracking-wider mb-3 sm:mb-4 text-gray-400">Contact</h3>
+                            <div className="space-y-2 sm:space-y-3 flex flex-col items-center md:items-start">
+                                <a href="mailto:pixeldesksolutions@gmail.com" className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors break-all">
+                                    <Mail className="w-4 h-4 shrink-0" />
                                     pixeldesksolutions@gmail.com
                                 </a>
                                 <a href="tel:+23359377115" className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors">
-                                    <Phone className="w-4 h-4" />
+                                    <Phone className="w-4 h-4 shrink-0" />
                                     +233 593-77-115
                                 </a>
                             </div>
@@ -424,8 +424,8 @@ const HomePage = ({ setCurrentPage = () => { }, user }) => {
 
                         {/* Social */}
                         <div>
-                            <h3 className="text-sm font-semibold uppercase tracking-wider mb-4 text-gray-400">Follow Us</h3>
-                            <div className="flex gap-3">
+                            <h3 className="text-sm font-semibold uppercase tracking-wider mb-3 sm:mb-4 text-gray-400">Follow Us</h3>
+                            <div className="flex gap-3 justify-center md:justify-start">
                                 <a
                                     href="https://www.facebook.com/profile.php?id=61584743459766"
                                     target="_blank"

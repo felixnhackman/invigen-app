@@ -2,6 +2,11 @@
 
 body {
     font-family: 'poppins', sans-serif;
+    overflow-x: hidden;
+}
+
+.touch-manipulation {
+    touch-action: manipulation;
 }
 
 @keyframes marquee {
