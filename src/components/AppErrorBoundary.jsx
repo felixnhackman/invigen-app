@@ -17,6 +17,7 @@ export default class AppErrorBoundary extends React.Component {
 
   render() {
     if (this.state.hasError) {
+      const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
       return (
         <div
           style={{
@@ -35,6 +36,11 @@ export default class AppErrorBoundary extends React.Component {
           <p style={{ marginBottom: 16, fontSize: '1rem' }}>
             Something went wrong.
           </p>
+          {isAndroid && (
+            <p style={{ marginBottom: 16, fontSize: '0.875rem', color: '#94a3b8', maxWidth: 320 }}>
+              On Android, open this link in Chrome for the best experience, then tap Reload.
+            </p>
+          )}
           <a
             href={window.location.href}
             style={{

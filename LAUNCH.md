@@ -39,6 +39,14 @@ CORS_ORIGIN=your_frontend_url
   - [ ] OAuth providers configured (if using Google sign-in)
   - [ ] Email templates customized
 
+- [ ] **Supabase URL Configuration** (Authentication → URL Configuration)
+  - [ ] **Site URL:** `https://invigen-app-2.onrender.com/` (no trailing path; use your actual production URL)
+  - [ ] **Redirect URLs** – use exactly these (one per line; remove any malformed or duplicated entries):
+    - `https://invigen-app-2.onrender.com/`
+    - `https://invigen-app-2.onrender.com/**`
+    - `https://invigen-app-2.onrender.com/auth/callback`
+  - Do **not** concatenate multiple URLs into one. Each redirect must be a single, valid URL.
+
 ### Paystack Configuration
 
 - [ ] **Paystack Account**
@@ -137,6 +145,10 @@ CORS_ORIGIN=your_frontend_url
   - [ ] All links work
   - [ ] No dead navigation paths
   - [ ] Back button works correctly
+
+- [ ] **Android**
+  - [ ] Link works when opened in **Chrome** (paste URL in address bar or use “Open in Chrome” from share menu).
+  - [ ] If the link is opened from WhatsApp, Gmail, etc., the in-app browser may fail; ask users to open in Chrome for best experience.
 
 ## 📋 Known Limitations
 

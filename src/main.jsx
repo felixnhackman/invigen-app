@@ -43,5 +43,8 @@ try {
   )
 } catch (err) {
   console.error(err)
-  showFallback('Something went wrong.')
+  const msg = /Android/i.test(navigator.userAgent)
+    ? 'Something went wrong. On Android, try opening this link in Chrome, then tap Reload.'
+    : 'Something went wrong.'
+  showFallback(msg)
 }

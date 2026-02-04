@@ -4,6 +4,7 @@ import Navbar from './components/Navbar';
 import HomePage from './components/HomePage';
 import Footer from './components/Footer';
 import PageSkeleton from './components/PageSkeleton';
+import AndroidChromeTip from './components/AndroidChromeTip';
 import './index.css';
 import './App.css';
 
@@ -68,6 +69,7 @@ function App() {
 
   return (
     <div className="min-h-screen overflow-x-hidden">
+      <AndroidChromeTip />
       <Navbar
         currentPage={currentPage}
         setCurrentPage={setCurrentPage}
