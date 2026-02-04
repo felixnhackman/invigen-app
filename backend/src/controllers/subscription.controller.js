@@ -3,7 +3,7 @@
  * Uses req.user.email (or id) instead of hardcoded user data
  */
 
-import { getSubscription, setPlan, updateSubscription } from '../models/subscription.store.js';
+import { getSubscription, setPlan, updateSubscription: updateSubscriptionInStore } from '../models/subscription.store.js';
 
 // PHASE 8.5: TODO - Replace with actual database queries
 // Currently using in-memory storage - replace with Supabase/PostgreSQL in production
@@ -191,7 +191,7 @@ export async function verifyPayment(req, res) {
         };
         
         // Update store
-        updateSubscription(userId, subscriptionWithPayment);
+        updateSubscriptionInStore(userId, subscriptionWithPayment);
 
         console.log(`✅ Subscription updated to PRO for user ${userId} (${userEmail})`);
 
