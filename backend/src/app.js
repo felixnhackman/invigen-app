@@ -4,8 +4,14 @@
 
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 import subscriptionRoutes from './routes/subscription.routes.js';
 import invoiceRoutes from './routes/invoice.routes.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const distPath = path.join(__dirname, '..', '..', 'dist');
 
 const app = express();
 
@@ -68,7 +74,16 @@ app.use((err, req, res, next) => {
     });
 });
 
-// PHASE 8.5: 404 handler
+// Serve built frontend (Vite dist) when deployed; express.static sets correct Content-Type (fixes CSS MIME type)
+if (fs.existsSync(distPath)) {
+    app.use(express.static(distPath));
+    // SPA fallback: serve index.html for GET requests that don't match a file or API route
+    app.get('*', (req, res) => {
+        res.sendFile(path.join(distPath, 'index.html'));
+    });
+}
+
+// PHASE 8.5: 404 handler (for non-GET or when dist is not present)
 app.use((req, res) => {
     res.status(404).json({
         error: 'Not Found',
