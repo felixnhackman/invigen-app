@@ -5,9 +5,14 @@ import App from './App.jsx'
 import { Buffer } from "buffer";
 window.Buffer = Buffer;
 
-// Register PWA service worker (works on localhost in dev)
+// Defer PWA registration to avoid memory spike on first load (reduces "Aw, Snap!" on Android)
 import { registerSW } from 'virtual:pwa-register';
-registerSW({ immediate: true });
+const register = registerSW({ immediate: false });
+if (typeof requestIdleCallback !== 'undefined') {
+  requestIdleCallback(() => register(), { timeout: 3000 });
+} else {
+  setTimeout(register, 2000);
+}
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

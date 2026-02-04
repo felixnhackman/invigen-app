@@ -31,6 +31,13 @@ const HomePage = ({ setCurrentPage = () => { }, user }) => {
     const [currentFlyer, setCurrentFlyer] = useState(0);
     const marqueeRef = useRef(null);
     const [marqueeInView, setMarqueeInView] = useState(true);
+    // Defer hero image so Android doesn't decode a huge image during first paint (reduces OOM / "Aw, Snap!")
+    const [heroReady, setHeroReady] = useState(false);
+    useEffect(() => {
+        const useIdle = typeof requestIdleCallback !== 'undefined';
+        const id = useIdle ? requestIdleCallback(() => setHeroReady(true), { timeout: 1500 }) : setTimeout(() => setHeroReady(true), 500);
+        return () => (useIdle ? cancelIdleCallback(id) : clearTimeout(id));
+    }, []);
 
     // Pause marquee animation when off-screen to save CPU/GPU
     useEffect(() => {
@@ -99,6 +106,8 @@ const HomePage = ({ setCurrentPage = () => { }, user }) => {
                                         src={flyers[getPrevIndex()].image}
                                         alt={flyers[getPrevIndex()].title}
                                         className="w-full h-full object-contain"
+                                        loading="lazy"
+                                        decoding="async"
                                     />
                                 </div>
                             </div>
@@ -110,6 +119,7 @@ const HomePage = ({ setCurrentPage = () => { }, user }) => {
                                         src={flyers[currentFlyer].image}
                                         alt={flyers[currentFlyer].title}
                                         className="w-full h-full object-contain"
+                                        decoding="async"
                                     />
 
                                     {/* Navigation Arrows - touch-friendly on mobile */}
@@ -139,6 +149,8 @@ const HomePage = ({ setCurrentPage = () => { }, user }) => {
                                         src={flyers[getNextIndex()].image}
                                         alt={flyers[getNextIndex()].title}
                                         className="w-full h-full object-contain"
+                                        loading="lazy"
+                                        decoding="async"
                                     />
                                 </div>
                             </div>
@@ -203,7 +215,7 @@ const HomePage = ({ setCurrentPage = () => { }, user }) => {
             {/* HERO SECTION */}
             <section
                 id="hero-section"
-                className="relative overflow-hidden bg-fit bg-center min-h-[420px] sm:min-h-[500px] lg:min-h-[600px]" style={{ backgroundImage: `url(${hero})` }}
+                className="relative overflow-hidden bg-fit bg-center min-h-[420px] sm:min-h-[500px] lg:min-h-[600px]" style={{ backgroundImage: heroReady ? `url(${hero})` : undefined, backgroundColor: heroReady ? undefined : '#0c1929' }}
             >
                 <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 sm:pt-28 lg:pt-32 pb-12 sm:pb-24 absolute inset-0 bg-black/80 backdrop-blur-sm flex flex-col justify-center">
                     <div className="text-center max-w-4xl mx-auto">
