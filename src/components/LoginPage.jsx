@@ -117,12 +117,13 @@ const LoginPage = ({ setCurrentPage, onLogin }) => {
                             )}
                         </button>
 
-                        <div className="relative my-6">
-                            <div className="absolute inset-0 flex items-center">
-                                <div className="w-full border-t border-gray-700" />
-                            </div>
-                            <div className="relative flex justify-center text-sm">
-                                <span className="px-3 bg-gray-900/80 text-gray-500">Or continue with</span>
+                       <div className="relative my-6">
+                            <div className="relative flex items-center gap-3">
+                                <div className=" w-full relative flex border-t border-gray-700" />
+                                <div className="w-full relative justify-center text-sm">
+                                    <span className="w-full relative flex items-center justify-center text-center text-gray-500">Or continue with</span>
+                                </div>
+                                <div className="w-full relative flex border-t border-gray-700" />
                             </div>
                         </div>
                         <ContinueWithGoogle setCurrentPage={setCurrentPage} onLogin={onLogin} />
