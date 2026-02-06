@@ -5,7 +5,8 @@
 
 import { getAuthToken, supabase } from '../lib/supabase';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+// Normalize API base URL: remove trailing slashes to prevent double slashes
+const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/+$/, '');
 
 /**
  * Make an authenticated API request
