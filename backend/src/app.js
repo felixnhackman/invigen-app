@@ -10,6 +10,7 @@ import { fileURLToPath } from 'url';
 import subscriptionRoutes from './routes/subscription.routes.js';
 import invoiceRoutes from './routes/invoice.routes.js';
 import { getAllSubscriptions } from './models/subscription.store.supabase.js';
+import { handlePaystackWebhook } from './controllers/webhook.controller.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distPath = path.join(__dirname, '..', '..', 'dist');
@@ -56,6 +57,20 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
 }));
+
+// Paystack webhook endpoint (must be before express.json() to get raw body)
+app.post('/api/webhooks/paystack', express.raw({ type: 'application/json' }), (req, res, next) => {
+    // Store raw body for signature verification, then parse JSON
+    const rawBody = req.body.toString();
+    try {
+        req.body = JSON.parse(rawBody);
+        req.rawBody = rawBody; // Keep raw body for signature verification
+    } catch (err) {
+        return res.status(400).json({ error: 'Invalid JSON' });
+    }
+    next();
+}, handlePaystackWebhook);
+
 app.use(express.json());
 
 // PHASE 8.5: Health check (no auth required)

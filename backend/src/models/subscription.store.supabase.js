@@ -81,6 +81,8 @@ export async function updateSubscription(userId, subscriptionData) {
 
     try {
         console.log(`📝 Updating subscription for user ${userId}:`, subscriptionData.plan);
+        
+        // BEFORE INSERT: Log the payload being sent
         const updateData = {
             plan: subscriptionData.plan || 'free',
             paystack_reference: subscriptionData.paystackReference || null,
@@ -90,27 +92,49 @@ export async function updateSubscription(userId, subscriptionData) {
             updated_at: new Date().toISOString(),
         };
 
+        const payload = {
+            user_id: userId,
+            ...updateData,
+        };
+
+        console.log('🔍 BEFORE INSERT - Payload being sent to Supabase:');
+        console.log('INSERT PAYLOAD:', JSON.stringify(payload, null, 2));
+        console.log('   - user_id (UUID):', userId);
+        console.log('   - plan:', payload.plan);
+        console.log('   - paystack_reference:', payload.paystack_reference);
+        console.log('   - paystack_customer_code:', payload.paystack_customer_code);
+        console.log('   - activated_at:', payload.activated_at);
+        console.log('   - expires_at:', payload.expires_at);
+
         const { data, error } = await supabaseAdmin
             .from('subscriptions')
-            .upsert({
-                user_id: userId,
-                ...updateData,
-            }, {
+            .upsert(payload, {
                 onConflict: 'user_id'
             })
             .select()
             .single();
 
+        // AFTER INSERT: Log the result
         if (error) {
-            console.error('❌ Error updating subscription in Supabase:', error);
+            console.error('❌ AFTER INSERT - Error occurred:');
+            console.error('INSERT RESULT:', { data: null, error });
             console.error('   Error code:', error.code);
             console.error('   Error message:', error.message);
             console.error('   Error details:', error.details);
+            console.error('   Error hint:', error.hint);
             console.error('   User ID:', userId);
             throw error;
         }
 
+        console.log('✅ AFTER INSERT - Success:');
+        console.log('INSERT RESULT:', { data, error: null });
+        console.log('   - Inserted/Updated subscription ID:', data.id);
+        console.log('   - User ID:', data.user_id);
+        console.log('   - Plan:', data.plan);
+        console.log('   - Created at:', data.created_at);
+        console.log('   - Updated at:', data.updated_at);
         console.log(`✅ Successfully updated subscription for user ${userId}`);
+
         return {
             plan: data.plan || 'free',
             userId: data.user_id,
@@ -122,7 +146,9 @@ export async function updateSubscription(userId, subscriptionData) {
             updatedAt: data.updated_at,
         };
     } catch (error) {
-        console.error('Error updating subscription:', error);
+        console.error('❌ ON ERROR - Exception caught:');
+        console.error('INSERT RESULT:', { data: null, error: error.message });
+        console.error('   Error stack:', error.stack);
         throw error;
     }
 }
