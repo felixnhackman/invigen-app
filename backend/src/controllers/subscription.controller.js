@@ -200,10 +200,29 @@ export async function verifyPayment(req, res) {
         };
         
         // Update database
-        await updateSubscriptionInStore(userId, subscriptionWithPayment);
+        console.log(`📝 Attempting to save subscription to Supabase for user ${userId}...`);
+        try {
+            await updateSubscriptionInStore(userId, subscriptionWithPayment);
+            console.log(`✅ Subscription saved to Supabase successfully`);
+        } catch (updateError) {
+            console.error('❌ Failed to save subscription to Supabase:', updateError);
+            throw updateError;
+        }
         
         // Set invoice limit to unlimited for PRO users
-        await setInvoiceLimit(userId, Infinity);
+        console.log(`📝 Setting invoice limit to unlimited for user ${userId}...`);
+        try {
+            await setInvoiceLimit(userId, Infinity);
+            console.log(`✅ Invoice limit set successfully`);
+        } catch (limitError) {
+            console.error('❌ Failed to set invoice limit:', limitError);
+            // Don't throw - subscription is more important than limit
+        }
+
+        // Verify the subscription was saved by fetching it back
+        console.log(`🔍 Verifying subscription was saved...`);
+        const verifySub = await getSubscription(userId);
+        console.log(`📊 Retrieved subscription:`, verifySub);
 
         console.log(`✅ Subscription updated to PRO for user ${userId} (${userEmail})`);
 
@@ -214,13 +233,17 @@ export async function verifyPayment(req, res) {
             userEmail,
             paystackReference: reference,
             activatedAt: subscriptionWithPayment.activatedAt,
+            expiresAt: subscriptionWithPayment.expiresAt,
             message: 'Subscription activated successfully',
+            verified: verifySub.plan === 'pro',
         });
     } catch (error) {
-        console.error('Error verifying payment:', error);
+        console.error('❌ Error verifying payment:', error);
+        console.error('   Error stack:', error.stack);
         return res.status(500).json({
             error: 'Internal Server Error',
             message: 'Failed to verify payment',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
     }
 }

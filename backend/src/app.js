@@ -9,7 +9,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import subscriptionRoutes from './routes/subscription.routes.js';
 import invoiceRoutes from './routes/invoice.routes.js';
-import { getAllSubscriptions } from './models/subscription.store.js';
+import { getAllSubscriptions } from './models/subscription.store.supabase.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distPath = path.join(__dirname, '..', '..', 'dist');
@@ -61,6 +61,52 @@ app.use(express.json());
 // PHASE 8.5: Health check (no auth required)
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Diagnostic endpoint to check backend configuration (no auth required)
+app.get('/debug/config', async (req, res) => {
+    const config = {
+        supabase: {
+            url: process.env.SUPABASE_URL ? '✅ Set' : '❌ Missing',
+            serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY ? '✅ Set' : '❌ Missing',
+            configured: !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY),
+        },
+        paystack: {
+            secretKey: process.env.PAYSTACK_SECRET_KEY ? '✅ Set' : '❌ Missing',
+        },
+        environment: process.env.NODE_ENV || 'development',
+        port: process.env.PORT || 5000,
+    };
+    
+    // Try to connect to Supabase if configured
+    if (config.supabase.configured) {
+        try {
+            const { createClient } = await import('@supabase/supabase-js');
+            const supabaseAdmin = createClient(
+                process.env.SUPABASE_URL,
+                process.env.SUPABASE_SERVICE_ROLE_KEY,
+                { auth: { autoRefreshToken: false, persistSession: false } }
+            );
+            
+            // Try a simple query to check connection
+            const { data, error } = await supabaseAdmin
+                .from('subscriptions')
+                .select('count')
+                .limit(1);
+            
+            if (error) {
+                config.supabase.connection = `❌ Error: ${error.message}`;
+                config.supabase.tableExists = false;
+            } else {
+                config.supabase.connection = '✅ Connected';
+                config.supabase.tableExists = true;
+            }
+        } catch (err) {
+            config.supabase.connection = `❌ Error: ${err.message}`;
+        }
+    }
+    
+    res.json(config);
 });
 
 // Debug endpoint to check stored subscriptions (development only)
