@@ -2,6 +2,7 @@
  * PHASE 8.5: Backend server entry point
  */
 
+import 'dotenv/config';
 import app from './app.js';
 
 const PORT = process.env.PORT || 5000;
