@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
     Document,
     Page,
@@ -9,7 +9,8 @@ import {
     PDFViewer,
     Font
 } from "@react-pdf/renderer";
-import { Upload, Palette, ArrowLeft, Check, X } from 'lucide-react';
+import { Upload, Palette, ArrowLeft, Check, X, Crown } from 'lucide-react';
+import { useSubscription } from '../hooks/useSubscription';
 import hero from '../assets/hero.png';
 import logo2 from '../assets/logo2.png';
 import PoppinsBold from "../fonts/Poppins-Bold.ttf";
@@ -326,8 +327,58 @@ const createStyles = (accentColor) => StyleSheet.create({
 });
 
 // Custom Invoice Document - matches InvoiceGenerator structure with customization
-const CustomInvoiceDocument = ({ formData, customization, calculateTotal, calculateBalance, invigenLogoSrc }) => {
-    const styles = createStyles(customization.accentColor);
+const CustomInvoiceDocument = ({ formData, customization, calculateTotal, calculateBalance, totalValue, balanceValue, invigenLogoSrc }) => {
+    // Safety checks for initial render
+    if (!formData || !customization) {
+        return (
+            <Document>
+                <Page size="A4">
+                    <View style={{ padding: 40 }}>
+                        <Text>Loading...</Text>
+                    </View>
+                </Page>
+            </Document>
+        );
+    }
+
+    // Support both function props (backward compatibility) and value props
+    const computedTotal = totalValue !== undefined ? totalValue : (calculateTotal ? calculateTotal() : 0);
+    const computedBalance = balanceValue !== undefined ? balanceValue : (calculateBalance ? calculateBalance() : 0);
+
+    // Ensure formData has required fields
+    const safeFormData = {
+        businessName: formData.businessName || '',
+        invoiceNumber: formData.invoiceNumber || '',
+        date: formData.date || new Date().toISOString().split('T')[0],
+        clientName: formData.clientName || '',
+        clientEmail: formData.clientEmail || '',
+        clientPhone: formData.clientPhone || '',
+        items: Array.isArray(formData.items) && formData.items.length > 0 ? formData.items : [{ name: '', quantity: 1, price: 0 }],
+        amountPaid: formData.amountPaid || 0,
+        note: formData.note || '',
+        currency: formData.currency || 'GHS',
+    };
+
+    const safeCustomization = {
+        logoUrl: customization.logoUrl || '',
+        accentColor: customization.accentColor || '#1e293b',
+        removeWatermark: customization.removeWatermark || false,
+    };
+
+    const styles = createStyles(safeCustomization.accentColor);
+
+    // Safe date formatting
+    let formattedDate = '';
+    try {
+        const dateObj = new Date(safeFormData.date);
+        if (!isNaN(dateObj.getTime())) {
+            formattedDate = dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+        } else {
+            formattedDate = new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+    } catch {
+        formattedDate = new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
 
     return (
         <Document>
@@ -335,28 +386,26 @@ const CustomInvoiceDocument = ({ formData, customization, calculateTotal, calcul
                 {/* Header - same as InvoiceGenerator */}
                 <View style={styles.header}>
                     <Text style={styles.invoiceLabel}>New Invoice</Text>
-                    <Text style={styles.invoiceNumber}>{formData.invoiceNumber}</Text>
+                    <Text style={styles.invoiceNumber}>{safeFormData.invoiceNumber}</Text>
                 </View>
 
                 {/* Business Card - with custom color and logo */}
                 <View style={styles.businessCard}>
                     <View style={styles.businessLeft}>
-                        {customization.logoUrl && customization.logoUrl.trim() !== '' && (
+                        {safeCustomization.logoUrl && safeCustomization.logoUrl.trim() !== '' && (
                             <Image
-                                src={customization.logoUrl}
+                                src={safeCustomization.logoUrl}
                                 style={styles.customLogo}
                             />
                         )}
                         <View style={styles.businessInfo}>
-                            <Text style={styles.businessName}>{formData.businessName}</Text>
-                            <Text style={styles.businessEmail}>{formData.clientEmail || "info@company.com"}</Text>
+                            <Text style={styles.businessName}>{safeFormData.businessName}</Text>
+                            <Text style={styles.businessEmail}>{safeFormData.clientEmail || "info@company.com"}</Text>
                         </View>
                     </View>
                     <View style={styles.dateSection}>
                         <Text style={styles.dateLabel}>Issue Date</Text>
-                        <Text style={styles.dateValue}>
-                            {new Date(formData.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        </Text>
+                        <Text style={styles.dateValue}>{formattedDate}</Text>
                     </View>
                 </View>
 
@@ -364,14 +413,14 @@ const CustomInvoiceDocument = ({ formData, customization, calculateTotal, calcul
                 <View style={styles.columns}>
                     <View style={styles.column}>
                         <Text style={styles.columnTitle}>Invoice Details</Text>
-                        <Text style={styles.infoText}>Invoice #: {formData.invoiceNumber}</Text>
-                        <Text style={styles.infoText}>Currency: {formData.currency}</Text>
+                        <Text style={styles.infoText}>Invoice #: {safeFormData.invoiceNumber}</Text>
+                        <Text style={styles.infoText}>Currency: {safeFormData.currency}</Text>
                     </View>
                     <View style={styles.column}>
                         <Text style={styles.columnTitle}>Bill To</Text>
-                        {formData.clientName && <Text style={styles.clientName}>{formData.clientName}</Text>}
-                        {formData.clientEmail && <Text style={styles.infoText}>{formData.clientEmail}</Text>}
-                        {formData.clientPhone && <Text style={styles.infoText}>{formData.clientPhone}</Text>}
+                        {safeFormData.clientName && <Text style={styles.clientName}>{safeFormData.clientName}</Text>}
+                        {safeFormData.clientEmail && <Text style={styles.infoText}>{safeFormData.clientEmail}</Text>}
+                        {safeFormData.clientPhone && <Text style={styles.infoText}>{safeFormData.clientPhone}</Text>}
                     </View>
                 </View>
 
@@ -386,12 +435,12 @@ const CustomInvoiceDocument = ({ formData, customization, calculateTotal, calcul
                         <Text style={[styles.tableHeaderText, styles.col4]}>Amount</Text>
                     </View>
 
-                    {formData.items.map((item, idx) => (
+                    {safeFormData.items.map((item, idx) => (
                         <View key={idx} style={styles.tableRow}>
-                            <Text style={[styles.itemName, styles.col1]}>{item.name}</Text>
-                            <Text style={[styles.itemQty, styles.col2]}>{item.quantity < 10 ? `0${item.quantity}` : item.quantity}</Text>
-                            <Text style={[styles.itemPrice, styles.col3]}>{formatCurrency(item.price, formData.currency)}</Text>
-                            <Text style={[styles.itemTotal, styles.col4]}>{formatCurrency(item.quantity * item.price, formData.currency)}</Text>
+                            <Text style={[styles.itemName, styles.col1]}>{item.name || ''}</Text>
+                            <Text style={[styles.itemQty, styles.col2]}>{item.quantity < 10 ? `0${item.quantity || 0}` : (item.quantity || 0)}</Text>
+                            <Text style={[styles.itemPrice, styles.col3]}>{formatCurrency(item.price || 0, safeFormData.currency)}</Text>
+                            <Text style={[styles.itemTotal, styles.col4]}>{formatCurrency((item.quantity || 0) * (item.price || 0), safeFormData.currency)}</Text>
                         </View>
                     ))}
                 </View>
@@ -400,52 +449,58 @@ const CustomInvoiceDocument = ({ formData, customization, calculateTotal, calcul
                 <View style={styles.summary}>
                     <View style={styles.summaryRow}>
                         <Text style={styles.summaryLabel}>Subtotal</Text>
-                        <Text style={styles.summaryValue}>{formatCurrency(calculateTotal(), formData.currency)}</Text>
+                        <Text style={styles.summaryValue}>{formatCurrency(computedTotal, safeFormData.currency)}</Text>
                     </View>
-                    {formData.amountPaid > 0 && (
+                    {safeFormData.amountPaid > 0 && (
                         <View style={styles.summaryRow}>
                             <Text style={styles.summaryLabel}>Paid</Text>
-                            <Text style={styles.summaryValue}>-{formatCurrency(formData.amountPaid, formData.currency)}</Text>
+                            <Text style={styles.summaryValue}>-{formatCurrency(safeFormData.amountPaid, safeFormData.currency)}</Text>
                         </View>
                     )}
                     <View style={styles.totalRow}>
                         <Text style={styles.totalLabel}>Total Due</Text>
-                        <Text style={styles.totalValue}>{formatCurrency(calculateBalance(), formData.currency)}</Text>
+                        <Text style={styles.totalValue}>{formatCurrency(computedBalance, safeFormData.currency)}</Text>
                     </View>
                 </View>
 
                 {/* Notes - same as InvoiceGenerator */}
-                {formData.note && (
+                {safeFormData.note && (
                     <View style={styles.notes}>
                         <Text style={styles.notesTitle}>Notes</Text>
-                        <Text style={styles.notesText}>{formData.note}</Text>
+                        <Text style={styles.notesText}>{safeFormData.note}</Text>
                     </View>
                 )}
 
-                {/* Footer - uses the pre-loaded base64 source */}
-                <View style={styles.footer}>
-                    <Text style={styles.footerText}>Generated with</Text>
-                    {invigenLogoSrc && invigenLogoSrc.trim() !== '' && (
-                        <Image
-                            src={invigenLogoSrc}
-                            style={styles.footerLogo}
-                        />
-                    )}
-                </View>
+                {/* Footer/Watermark - PRO users can remove */}
+                {!safeCustomization.removeWatermark && (
+                    <View style={styles.footer}>
+                        <Text style={styles.footerText}>Generated with</Text>
+                        {invigenLogoSrc && invigenLogoSrc.trim() !== '' && (
+                            <Image
+                                src={invigenLogoSrc}
+                                style={styles.footerLogo}
+                            />
+                        )}
+                    </View>
+                )}
             </Page>
         </Document>
     );
 };
 
 const InvoiceCustomizer = ({ formData, onSave, onCancel }) => {
+    // PRO Feature: Check subscription status
+    const { isPro } = useSubscription();
+    
     const [customization, setCustomization] = useState({
         logoUrl: '',
         logoFile: null,
         accentColor: '#1e293b',
+        removeWatermark: false, // PRO feature
     });
 
     const [invigenLogoBase64, setInvigenLogoBase64] = useState('');
-    const [isLoadingLogo, setIsLoadingLogo] = useState(true);
+    const [_isLoadingLogo, setIsLoadingLogo] = useState(true); // Prefix with _ to indicate intentionally unused
 
     // Ref to clear file input
     const fileInputRef = useRef(null);
@@ -473,10 +528,39 @@ const InvoiceCustomizer = ({ formData, onSave, onCancel }) => {
         loadInvigenLogo();
     }, []);
 
-    const calculateTotal = () => formData.items.reduce((sum, item) => sum + item.quantity * item.price, 0);
-    const calculateBalance = () => calculateTotal() - parseFloat(formData.amountPaid || 0);
+    const calculateTotal = useCallback(() => {
+        return formData.items.reduce((sum, item) => sum + item.quantity * item.price, 0);
+    }, [formData.items]);
+
+    const calculateBalance = useCallback(() => {
+        return calculateTotal() - parseFloat(formData.amountPaid || 0);
+    }, [calculateTotal, formData.amountPaid]);
+
+    // Calculate values once to avoid passing functions to PDF component
+    const totalValue = useMemo(() => calculateTotal(), [calculateTotal]);
+    const balanceValue = useMemo(() => calculateBalance(), [calculateBalance]);
+
+    // Create a stable key for the PDF document to force re-render when data changes
+    const documentKey = useMemo(() => {
+        return JSON.stringify({
+            invoiceNumber: formData.invoiceNumber,
+            businessName: formData.businessName,
+            totalValue,
+            balanceValue,
+            logoUrl: customization.logoUrl,
+            accentColor: customization.accentColor,
+            removeWatermark: customization.removeWatermark,
+        });
+    }, [formData.invoiceNumber, formData.businessName, totalValue, balanceValue, customization.logoUrl, customization.accentColor, customization.removeWatermark]);
 
     const handleLogoUpload = (e) => {
+        // PRO Feature: Check subscription before allowing logo upload
+        if (!isPro) {
+            alert('Logo upload is a PRO feature. Please upgrade to Pro.');
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            return;
+        }
+
         const file = e.target.files?.[0];
         if (!file) return;
 
@@ -565,19 +649,23 @@ const InvoiceCustomizer = ({ formData, onSave, onCancel }) => {
                 <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-8">
                     {/* Left: Customization Controls */}
                     <div className="lg:col-span-2 space-y-6">
-                        {/* Logo Upload Card */}
-                        <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700/50 rounded-2xl p-6 shadow-2xl">
-                            <div className="flex items-start gap-4 mb-6">
-                                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-500/20">
-                                    <Upload className="w-6 h-6 text-white" />
+                        {/* Logo Upload Card - PRO Only */}
+                        {isPro ? (
+                            <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700/50 rounded-2xl p-6 shadow-2xl">
+                                <div className="flex items-start gap-4 mb-6">
+                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-500/20">
+                                        <Upload className="w-6 h-6 text-white" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h2 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
+                                            Brand Logo
+                                            <Crown className="w-4 h-4 text-yellow-400" />
+                                        </h2>
+                                        <p className="text-sm text-gray-400 leading-relaxed">Upload your company logo (PNG with transparent background recommended)</p>
+                                    </div>
                                 </div>
-                                <div className="flex-1">
-                                    <h2 className="text-lg font-bold text-white mb-1">Brand Logo</h2>
-                                    <p className="text-sm text-gray-400 leading-relaxed">Upload your company logo (PNG with transparent background recommended)</p>
-                                </div>
-                            </div>
 
-                            {!customization.logoUrl ? (
+                                {!customization.logoUrl ? (
                                 <label className="block">
                                     <input
                                         ref={fileInputRef}
@@ -619,7 +707,28 @@ const InvoiceCustomizer = ({ formData, onSave, onCancel }) => {
                                     </button>
                                 </div>
                             )}
-                        </div>
+                            </div>
+                        ) : (
+                            <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700/50 rounded-2xl p-6 shadow-2xl">
+                                <div className="flex items-start gap-4 mb-6">
+                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center flex-shrink-0">
+                                        <Upload className="w-6 h-6 text-gray-500" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h2 className="text-lg font-bold text-gray-400 mb-1 flex items-center gap-2">
+                                            Brand Logo
+                                            <Crown className="w-4 h-4 text-yellow-400" />
+                                        </h2>
+                                        <p className="text-sm text-gray-500 leading-relaxed">Upload your company logo - PRO feature</p>
+                                    </div>
+                                </div>
+                                <div className="border-2 border-dashed border-gray-700 rounded-xl p-8 text-center bg-gray-800/30">
+                                    <Crown className="w-12 h-12 text-yellow-400 mx-auto mb-3 opacity-50" />
+                                    <p className="text-gray-400 font-medium mb-2">Logo Upload is a PRO Feature</p>
+                                    <p className="text-sm text-gray-500">Upgrade to Pro to upload your custom logo</p>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Color Selection Card */}
                         <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700/50 rounded-2xl p-6 shadow-2xl">
@@ -747,30 +856,89 @@ const InvoiceCustomizer = ({ formData, onSave, onCancel }) => {
                             </div>
                         </div>
 
+                        {/* PRO Feature: Watermark Removal Toggle */}
+                        {isPro ? (
+                            <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700/50 rounded-2xl p-6 shadow-2xl">
+                                <div className="flex items-start gap-4 mb-4">
+                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-600 to-amber-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-yellow-500/20">
+                                        <Crown className="w-6 h-6 text-white" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h2 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
+                                            Remove Watermark
+                                            <span className="px-2 py-1 bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-xs font-semibold rounded-full">
+                                                PRO
+                                            </span>
+                                        </h2>
+                                        <p className="text-sm text-gray-400 leading-relaxed">Remove the "Generated with Invigen" watermark from your invoices</p>
+                                    </div>
+                                </div>
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={customization.removeWatermark}
+                                        onChange={(e) => setCustomization(prev => ({ ...prev, removeWatermark: e.target.checked }))}
+                                        className="w-5 h-5 rounded border-gray-600 bg-gray-800 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                                    />
+                                    <span className="text-gray-300 font-medium">Remove watermark from invoices</span>
+                                </label>
+                            </div>
+                        ) : (
+                            <div className="bg-gray-800/50 border border-gray-700 rounded-2xl p-6">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <Crown className="w-5 h-5 text-gray-500" />
+                                    <h3 className="text-lg font-bold text-gray-400">Remove Watermark</h3>
+                                    <span className="px-2 py-1 bg-gray-700 text-gray-500 text-xs font-semibold rounded-full">
+                                        PRO
+                                    </span>
+                                </div>
+                                <p className="text-sm text-gray-500 mb-4">Upgrade to Pro to remove the watermark from your invoices</p>
+                                <button
+                                    onClick={() => {
+                                        // This will be handled by parent component
+                                        if (onCancel) onCancel();
+                                    }}
+                                    className="w-full px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-lg font-semibold hover:shadow-xl hover:shadow-blue-500/30 transition-all"
+                                >
+                                    Upgrade to Pro
+                                </button>
+                            </div>
+                        )}
+
                         {/* Save Button */}
                         <button
                             onClick={handleSave}
                             className="w-full bg-gradient-to-r from-blue-600 to-cyan-500 text-white px-8 py-4 rounded-xl text-lg font-bold hover:shadow-2xl hover:shadow-blue-500/40 transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-3"
                         >
                             <Check className="w-5 h-5" />
-                            Save & Preview
+                            Save Customization
                         </button>
 
-                        {/* Info Box */}
-                        <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 backdrop-blur-sm">
+                        {/* Info Box - Different messages for FREE vs PRO */}
+                        <div className={`${isPro ? 'bg-green-500/10 border-green-500/30' : 'bg-blue-500/10 border-blue-500/30'} border rounded-xl p-4 backdrop-blur-sm`}>
                             <div className="flex gap-3">
                                 <div className="flex-shrink-0">
-                                    <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                                        <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
+                                    <div className={`w-8 h-8 rounded-lg ${isPro ? 'bg-green-500/20' : 'bg-blue-500/20'} flex items-center justify-center`}>
+                                        {isPro ? (
+                                            <Crown className="w-4 h-4 text-green-400" />
+                                        ) : (
+                                            <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="flex-1">
-                                    <p className="text-sm text-blue-300 leading-relaxed">
-                                        <strong className="font-semibold">Free Tier:</strong> Includes one logo and header color.
-                                        Advanced features like multiple color zones and positioning coming in Pro.
-                                    </p>
+                                    {isPro ? (
+                                        <p className="text-sm text-green-300 leading-relaxed">
+                                            <strong className="font-semibold">Pro Features Active:</strong> You can customize your logo, colors, and remove the watermark. Advanced features like multiple color zones coming soon!
+                                        </p>
+                                    ) : (
+                                        <p className="text-sm text-blue-300 leading-relaxed">
+                                            <strong className="font-semibold">Free Tier:</strong> Includes one logo and header color.
+                                            <span className="text-blue-400"> Upgrade to Pro</span> to remove watermarks and unlock advanced customization.
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -789,15 +957,24 @@ const InvoiceCustomizer = ({ formData, onSave, onCancel }) => {
                                 </span>
                             </div>
                             <div className="rounded-xl overflow-hidden border-2 border-gray-700 shadow-2xl bg-white" style={{ height: "calc(100vh - 220px)", minHeight: "600px" }}>
-                                <PDFViewer width="100%" height="100%" className="border-0">
-                                    <CustomInvoiceDocument
-                                        formData={formData}
-                                        customization={customization}
-                                        calculateTotal={calculateTotal}
-                                        calculateBalance={calculateBalance}
-                                        invigenLogoSrc={invigenLogoBase64}
-                                    />
-                                </PDFViewer>
+                                {formData && customization && invigenLogoBase64 ? (
+                                    <PDFViewer width="100%" height="100%" className="border-0" key={documentKey}>
+                                        <CustomInvoiceDocument
+                                            formData={formData}
+                                            customization={customization}
+                                            totalValue={totalValue}
+                                            balanceValue={balanceValue}
+                                            invigenLogoSrc={invigenLogoBase64}
+                                        />
+                                    </PDFViewer>
+                                ) : (
+                                    <div className="flex items-center justify-center h-full text-gray-400">
+                                        <div className="text-center">
+                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400 mx-auto mb-4"></div>
+                                            <p>Loading preview...</p>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

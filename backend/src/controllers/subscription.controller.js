@@ -4,6 +4,7 @@
  */
 
 import { getSubscription, setPlan, updateSubscription as updateSubscriptionInStore } from '../models/subscription.store.js';
+import { setInvoiceLimit } from '../models/invoice-usage.store.js';
 
 // PHASE 8.5: TODO - Replace with actual database queries
 // Currently using in-memory storage - replace with Supabase/PostgreSQL in production
@@ -192,6 +193,9 @@ export async function verifyPayment(req, res) {
         
         // Update store
         updateSubscriptionInStore(userId, subscriptionWithPayment);
+        
+        // Set invoice limit to unlimited for PRO users
+        setInvoiceLimit(userId, Infinity);
 
         console.log(`✅ Subscription updated to PRO for user ${userId} (${userEmail})`);
 

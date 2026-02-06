@@ -89,8 +89,10 @@ export function useSubscription() {
     const hasPremiumAccess = isPro;
 
     const invoiceCount = invoiceUsage?.count || 0;
-    const invoiceLimit = invoiceUsage?.limit || 10;
-    const canCreateInvoice = isPro || invoiceCount < invoiceLimit;
+    // For PRO users, limit is null (unlimited). For free users, default to 10.
+    const invoiceLimit = isPro ? null : (invoiceUsage?.limit || 10);
+    // PRO users can always create invoices. Free users check against limit.
+    const canCreateInvoice = isPro || (invoiceLimit !== null && invoiceCount < invoiceLimit);
 
     return {
         plan,

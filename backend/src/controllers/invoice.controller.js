@@ -3,6 +3,9 @@
  * Tracks invoice usage per user (not hardcoded)
  */
 
+import { getInvoiceUsage as getUsageFromStore, incrementInvoiceUsage, setInvoiceLimit } from '../models/invoice-usage.store.js';
+import { getSubscription } from '../models/subscription.store.js';
+
 /**
  * PHASE 8.5: Get invoice usage for authenticated user
  * GET /api/invoices/usage
@@ -19,25 +22,29 @@ export async function getInvoiceUsage(req, res) {
             });
         }
 
-        // PHASE 8.5: TODO - Fetch usage from database using userId
-        // Replace with actual database query:
-        // const usage = await InvoiceUsage.findOne({ userId });
-        // if (!usage) {
-        //     // Create default usage record
-        //     await InvoiceUsage.create({ userId, count: 0, limit: 10 });
-        //     return { count: 0, limit: 10 };
-        // }
-        // return { count: usage.count, limit: usage.limit };
+        // Get subscription to determine limit
+        const subscription = getSubscription(userId);
+        const plan = subscription?.plan || 'free';
+        const limit = plan === 'pro' ? Infinity : 10;
 
-        // PHASE 8.5: Default usage for free plan
-        const usage = {
-            count: 0, // PHASE 8.5: TODO - Get actual count from database
-            limit: 10, // Free plan limit
+        // Get usage from store
+        const usage = getUsageFromStore(userId);
+        
+        // Update limit if plan changed
+        if (usage.limit !== limit) {
+            setInvoiceLimit(userId, limit);
+            usage.limit = limit;
+        }
+
+        // Handle Infinity limit (PRO plan) - JSON doesn't support Infinity, so use null
+        const limitValue = usage.limit === Infinity ? null : usage.limit;
+        
+        return res.json({
+            count: usage.count,
+            limit: limitValue,
             userId,
             userEmail,
-        };
-
-        return res.json(usage);
+        });
     } catch (error) {
         console.error('Error fetching invoice usage:', error);
         return res.status(500).json({
@@ -63,29 +70,39 @@ export async function createInvoice(req, res) {
             });
         }
 
-        // PHASE 8.5: TODO - Check subscription plan and usage limits
-        // const subscription = await Subscription.findOne({ userId });
-        // const usage = await InvoiceUsage.findOne({ userId });
-        // const plan = subscription?.plan || 'free';
-        // const limit = plan === 'pro' ? Infinity : 10;
-        // if (usage.count >= limit) {
-        //     return res.status(403).json({
-        //         error: 'Limit Reached',
-        //         message: 'You have reached your invoice limit for this month',
-        //     });
-        // }
+        // Check subscription plan and usage limits
+        const subscription = getSubscription(userId);
+        const plan = subscription?.plan || 'free';
+        const limit = plan === 'pro' ? Infinity : 10;
 
-        // PHASE 8.5: TODO - Increment usage count
-        // await InvoiceUsage.findOneAndUpdate(
-        //     { userId },
-        //     { $inc: { count: 1 }, updatedAt: new Date() },
-        //     { upsert: true }
-        // );
+        // Get current usage
+        const usage = getUsageFromStore(userId);
+        
+        // Update limit if plan changed
+        if (usage.limit !== limit) {
+            setInvoiceLimit(userId, limit);
+            usage.limit = limit;
+        }
+
+        // Check if limit reached (only for free plan)
+        if (plan === 'free' && usage.count >= limit) {
+            return res.status(403).json({
+                error: 'Limit Reached',
+                message: 'You have reached your invoice limit for this month. Upgrade to Pro for unlimited invoices.',
+            });
+        }
+
+        // Increment usage count
+        const updatedUsage = incrementInvoiceUsage(userId);
 
         return res.json({
             success: true,
             message: 'Invoice created',
             userId,
+            usage: {
+                count: updatedUsage.count,
+                limit: updatedUsage.limit,
+            },
         });
     } catch (error) {
         console.error('Error creating invoice:', error);
@@ -112,15 +129,16 @@ export async function authorizeDownload(req, res) {
             });
         }
 
-        // PHASE 8.5: TODO - Check subscription plan
-        // const subscription = await Subscription.findOne({ userId });
-        // const plan = subscription?.plan || 'free';
-        // if (plan !== 'pro') {
-        //     return res.status(403).json({
-        //         error: 'Forbidden',
-        //         message: 'PDF download requires Pro subscription',
-        //     });
-        // }
+        // Check subscription plan
+        const subscription = getSubscription(userId);
+        const plan = subscription?.plan || 'free';
+        
+        if (plan !== 'pro') {
+            return res.status(403).json({
+                error: 'Forbidden',
+                message: 'PDF download requires Pro subscription. Upgrade to Pro to download invoices.',
+            });
+        }
 
         return res.json({
             authorized: true,
@@ -151,15 +169,16 @@ export async function authorizeEmail(req, res) {
             });
         }
 
-        // PHASE 8.5: TODO - Check subscription plan
-        // const subscription = await Subscription.findOne({ userId });
-        // const plan = subscription?.plan || 'free';
-        // if (plan !== 'pro') {
-        //     return res.status(403).json({
-        //         error: 'Forbidden',
-        //         message: 'Email sending requires Pro subscription',
-        //     });
-        // }
+        // Check subscription plan
+        const subscription = getSubscription(userId);
+        const plan = subscription?.plan || 'free';
+        
+        if (plan !== 'pro') {
+            return res.status(403).json({
+                error: 'Forbidden',
+                message: 'Email sending requires Pro subscription. Upgrade to Pro to send invoices via email.',
+            });
+        }
 
         return res.json({
             authorized: true,
@@ -190,15 +209,16 @@ export async function authorizeWatermarkRemoval(req, res) {
             });
         }
 
-        // PHASE 8.5: TODO - Check subscription plan
-        // const subscription = await Subscription.findOne({ userId });
-        // const plan = subscription?.plan || 'free';
-        // if (plan !== 'pro') {
-        //     return res.status(403).json({
-        //         error: 'Forbidden',
-        //         message: 'Watermark removal requires Pro subscription',
-        //     });
-        // }
+        // Check subscription plan
+        const subscription = getSubscription(userId);
+        const plan = subscription?.plan || 'free';
+        
+        if (plan !== 'pro') {
+            return res.status(403).json({
+                error: 'Forbidden',
+                message: 'Watermark removal requires Pro subscription. Upgrade to Pro to remove watermarks.',
+            });
+        }
 
         return res.json({
             authorized: true,

@@ -9,6 +9,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import subscriptionRoutes from './routes/subscription.routes.js';
 import invoiceRoutes from './routes/invoice.routes.js';
+import { getAllSubscriptions } from './models/subscription.store.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distPath = path.join(__dirname, '..', '..', 'dist');
@@ -60,6 +61,19 @@ app.use(express.json());
 // PHASE 8.5: Health check (no auth required)
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Debug endpoint to check stored subscriptions (development only)
+app.get('/debug/subscriptions', (req, res) => {
+    if (process.env.NODE_ENV === 'production') {
+        return res.status(403).json({ error: 'Not available in production' });
+    }
+    const subscriptions = getAllSubscriptions();
+    res.json({
+        count: subscriptions.length,
+        subscriptions,
+        note: '⚠️ This is in-memory storage - data is lost on server restart',
+    });
 });
 
 // PHASE 8.5: Authenticated routes

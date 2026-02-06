@@ -79,7 +79,7 @@ export async function getProfile(userId) {
     }
     const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, avatar_url, phone, updated_at, created_at')
+        .select('id, full_name, avatar_url, phone, business_info, updated_at, created_at')
         .eq('id', userId)
         .maybeSingle();
     if (error) throw error;
@@ -123,6 +123,43 @@ export async function upsertProfile(userId, defaults = {}) {
         .single();
     if (error) throw error;
     return data;
+}
+
+/**
+ * Save business information for PRO users
+ * Business info is stored in profiles.business_info JSONB column
+ */
+export async function saveBusinessInfo(userId, businessInfo) {
+    if (!supabase) {
+        throw new Error('Supabase not configured');
+    }
+    const { data, error } = await supabase
+        .from('profiles')
+        .update({
+            business_info: businessInfo,
+            updated_at: new Date().toISOString(),
+        })
+        .eq('id', userId)
+        .select('business_info')
+        .single();
+    if (error) throw error;
+    return data.business_info;
+}
+
+/**
+ * Get business information for PRO users
+ */
+export async function getBusinessInfo(userId) {
+    if (!supabase) {
+        throw new Error('Supabase not configured');
+    }
+    const { data, error } = await supabase
+        .from('profiles')
+        .select('business_info')
+        .eq('id', userId)
+        .maybeSingle();
+    if (error) throw error;
+    return data?.business_info || null;
 }
 
 const AVATARS_BUCKET = 'avatars';

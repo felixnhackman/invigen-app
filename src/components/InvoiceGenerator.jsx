@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
     Document,
     Page,
@@ -11,7 +11,7 @@ import {
     pdf,
     Font
 } from "@react-pdf/renderer";
-import { Plus, Trash2, Download, ArrowLeft, ArrowRight, Send, Mail, User, Building2, CheckCircle, Palette } from 'lucide-react';
+import { Plus, Trash2, Download, ArrowLeft, ArrowRight, User, Building2, CheckCircle, Palette, Eye, EyeOff, Crown, MessageCircle, Upload, X } from 'lucide-react';
 import hero from '../assets/hero.png';
 import logo2 from '../assets/logo2.png';
 import PoppinsBold from "../fonts/Poppins-Bold.ttf";
@@ -22,15 +22,16 @@ import { NotificationDialog, Toast, useNotification } from './NotificationDialog
 import { useSubscription } from '../hooks/useSubscription';
 import UpgradeModal from './UpgradeModal';
 import { requestDownloadAuth, requestEmailAuth, createInvoice } from '../utils/api';
+import { getBusinessInfo, saveBusinessInfo } from '../lib/supabase';
 import emailjs from '@emailjs/browser';
 
 
 
 // EmailJS Configuration
-const SERVICE_ID = 'invigen_email_service';
-const INVOICE_TEMPLATE_ID = 'template_ygm8pjo';
-const FEEDBACK_TEMPLATE_ID = 'feedback_invigen';
-const PUBLIC_KEY = 'IP5q2YStka3oDD-zQ';
+const SERVICE_ID = 'service_wri4gvf'; // Your EmailJS service ID
+const INVOICE_TEMPLATE_ID = 'template_wijvouc'; // Your invoice template ID
+const FEEDBACK_TEMPLATE_ID = 'feedback_invigen'; // Optional: for feedback emails
+const PUBLIC_KEY = 'IP5q2YStka3oDD-zQ'; // Your EmailJS public key (update if different)
 
 
 
@@ -405,6 +406,11 @@ const InvoiceGenerator = ({ onFinalDownload, user, setCurrentPage }) => {
 
     const [customization, setCustomization] = useState(null);
     const [showCustomizer, setShowCustomizer] = useState(false);
+    
+    // PRO Feature: Logo upload state (for main form)
+    const [logoFile, setLogoFile] = useState(null);
+    const [logoPreview, setLogoPreview] = useState(null);
+    const logoInputRef = useRef(null);
 
     const [feedback, setFeedback] = useState({
         rating: 0,
@@ -428,9 +434,11 @@ const InvoiceGenerator = ({ onFinalDownload, user, setCurrentPage }) => {
     ];
 
     const [showInvoice, setShowInvoice] = useState(false);
-    const [emailSent, setEmailSent] = useState(false);
-    const [isSending, setIsSending] = useState(false);
+    
+    // WhatsApp input state
+    const [sendToPhone, setSendToPhone] = useState('');
     const [logoBase64, setLogoBase64] = useState(logo2);
+    const [showPreview, setShowPreview] = useState(false); // PRO feature: Live preview
 
     // Notification hooks
     const { notification, toast, showNotification, showToast, closeNotification, closeToast } = useNotification();
@@ -445,22 +453,55 @@ const InvoiceGenerator = ({ onFinalDownload, user, setCurrentPage }) => {
         loadLogo();
     }, []);
 
+    // Auto-generate invoice number based on user email/name (only once when user loads)
     useEffect(() => {
-        // Initialize EmailJS
-        try {
-            emailjs.init(PUBLIC_KEY);
-            // PHASE 8: Removed debug log for production
-        } catch (error) {
-            // PHASE 8: Error logging kept for debugging, but user-friendly message shown
-            console.error('Failed to initialize EmailJS:', error);
-            showNotification({
-                type: 'error',
-                title: 'Initialization Error',
-                message: 'Failed to initialize email service. Please refresh the page.',
-                details: error.message
+        if (user && !formData.invoiceNumber) {
+            // Generate invoice number from user email or name
+            const userIdentifier = user.email || user.user_metadata?.full_name || user.id || 'USER';
+            const prefix = userIdentifier.split('@')[0].toUpperCase().substring(0, 3) || 'INV';
+            const timestamp = Date.now().toString().slice(-6); // Last 6 digits of timestamp
+            const generatedNumber = `${prefix}-${timestamp}`;
+            
+            setFormData(prev => {
+                // Only set if invoice number is still empty
+                if (!prev.invoiceNumber) {
+                    return {
+                        ...prev,
+                        invoiceNumber: generatedNumber
+                    };
+                }
+                return prev;
             });
         }
-    }, []);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user?.id, user?.email]);
+
+    // PRO Feature: Load saved business info for PRO users
+    useEffect(() => {
+        const loadBusinessInfo = async () => {
+            if (!user?.id || !isPro) return;
+            
+            try {
+                const savedBusinessInfo = await getBusinessInfo(user.id);
+                if (savedBusinessInfo) {
+                    // Auto-fill business info for PRO users
+                    setFormData(prev => ({
+                        ...prev,
+                        businessName: savedBusinessInfo.businessName || prev.businessName,
+                        clientEmail: savedBusinessInfo.businessEmail || prev.clientEmail,
+                        // Add more fields as needed
+                    }));
+                }
+            } catch (error) {
+                console.error('Failed to load business info:', error);
+                // Non-critical error - continue without saved info
+            }
+        };
+        
+        loadBusinessInfo();
+    }, [user?.id, isPro]);
+
+    // EmailJS initialization removed - using WhatsApp only
 
     const calculateTotal = () => formData.items.reduce((sum, item) => sum + item.quantity * item.price, 0);
     const calculateBalance = () => calculateTotal() - parseFloat(formData.amountPaid || 0);
@@ -484,7 +525,31 @@ const InvoiceGenerator = ({ onFinalDownload, user, setCurrentPage }) => {
             return;
         }
 
+        // PRO Feature: Save business info for PRO users
+        if (user?.id && isPro && formData.businessName) {
+            try {
+                await saveBusinessInfo(user.id, {
+                    businessName: formData.businessName,
+                    businessEmail: formData.clientEmail,
+                    // Add more fields as needed
+                });
+            } catch (error) {
+                console.error('Failed to save business info:', error);
+                // Non-critical error - continue with invoice generation
+            }
+        }
+
+        // PRO Feature: Ensure logo from main form is included in customization
+        if (isPro && logoPreview && !customization?.logoUrl) {
+            setCustomization(prev => ({
+                ...prev,
+                logoUrl: logoPreview,
+                logoFile: logoFile,
+            }));
+        }
+
         // PHASE 8.5: Track invoice creation via API
+        // This is non-critical - invoice generation should continue even if tracking fails
         if (user) {
             try {
                 await createInvoice(formData);
@@ -505,14 +570,26 @@ const InvoiceGenerator = ({ onFinalDownload, user, setCurrentPage }) => {
                         setCurrentPage('login');
                     }
                     return;
+                } else if (error.message === 'Failed to fetch' || error.message.includes('ERR_CONNECTION_RESET')) {
+                    // Backend server is not running - show warning but allow invoice generation
+                    console.warn('Backend server not available. Invoice tracking skipped, but invoice generation will continue.');
+                    showNotification({
+                        type: 'warning',
+                        title: 'Backend Unavailable',
+                        message: 'Invoice generated successfully, but usage tracking is unavailable.',
+                        details: 'The backend server appears to be offline. Your invoice is still generated and can be downloaded.',
+                        autoClose: true,
+                        autoCloseDelay: 4000
+                    });
+                } else {
+                    // Other errors - log but don't block invoice generation
+                    console.error('Failed to track invoice creation:', error);
                 }
-                // Non-critical error - allow invoice generation to continue
-                console.error('Failed to track invoice creation:', error);
+                // Continue with invoice generation even if tracking fails
             }
         }
 
         setShowInvoice(true);
-        setEmailSent(false);
 
         showToast({
             type: 'success',
@@ -534,13 +611,19 @@ const InvoiceGenerator = ({ onFinalDownload, user, setCurrentPage }) => {
     };
 
     const handleSaveCustomization = (newCustomization) => {
-        setCustomization(newCustomization);
+        // Merge logo from main form if it exists
+        const mergedCustomization = {
+            ...newCustomization,
+            logoUrl: newCustomization.logoUrl || (logoPreview ? logoPreview : null),
+        };
+        setCustomization(mergedCustomization);
         setShowCustomizer(false);
-        setShowInvoice(true);
+        // Don't show invoice yet - only show when "Generate Invoice" is pressed
+        // setShowInvoice(true); // Removed - invoice should only generate on "Generate Invoice" button
 
         showToast({
             type: 'success',
-            message: 'Customization saved successfully!'
+            message: 'Customization saved successfully! You can continue editing or generate the invoice when ready.'
         });
     };
 
@@ -579,9 +662,95 @@ const InvoiceGenerator = ({ onFinalDownload, user, setCurrentPage }) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
+
+    // PRO Feature: Handle logo upload (for main form)
+    const handleLogoUpload = (e) => {
+        if (!isPro) {
+            setUpgradeFeatureName('Upload custom logo');
+            setShowUpgradeModal(true);
+            return;
+        }
+
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml'];
+        if (!validTypes.includes(file.type)) {
+            showNotification({
+                type: 'warning',
+                title: 'Invalid File Type',
+                message: 'Please upload a PNG, JPG, or SVG file.',
+                autoClose: true,
+                autoCloseDelay: 3000
+            });
+            if (logoInputRef.current) logoInputRef.current.value = '';
+            return;
+        }
+
+        if (file.size > 2 * 1024 * 1024) {
+            showNotification({
+                type: 'warning',
+                title: 'File Too Large',
+                message: 'File size must be less than 2MB.',
+                autoClose: true,
+                autoCloseDelay: 3000
+            });
+            if (logoInputRef.current) logoInputRef.current.value = '';
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const result = reader.result;
+            if (result && typeof result === 'string') {
+                setLogoPreview(result);
+                setLogoFile(file);
+                // Update customization state with logo
+                setCustomization(prev => ({
+                    ...prev,
+                    logoUrl: result,
+                    logoFile: file,
+                }));
+                showToast({
+                    type: 'success',
+                    message: 'Logo uploaded successfully!'
+                });
+            }
+        };
+        reader.onerror = () => {
+            showNotification({
+                type: 'error',
+                title: 'Upload Failed',
+                message: 'Failed to read file. Please try again.',
+                autoClose: true,
+                autoCloseDelay: 3000
+            });
+            if (logoInputRef.current) logoInputRef.current.value = '';
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleRemoveLogo = () => {
+        if (!isPro) return;
+        setLogoPreview(null);
+        setLogoFile(null);
+        setCustomization(prev => ({
+            ...prev,
+            logoUrl: '',
+            logoFile: null,
+        }));
+        if (logoInputRef.current) logoInputRef.current.value = '';
+        showToast({
+            type: 'success',
+            message: 'Logo removed'
+        });
+    };
     // PHASE 8.5: Updated handleSendEmail with PRO check
     const handleSendEmail = async () => {
-        if (!formData.clientEmail) {
+        // Use input email if provided, otherwise fall back to formData.clientEmail
+        const emailToSend = sendToEmail.trim() || formData.clientEmail;
+        
+        if (!emailToSend) {
             showNotification({
                 type: 'warning',
                 title: 'Email Required',
@@ -592,12 +761,12 @@ const InvoiceGenerator = ({ onFinalDownload, user, setCurrentPage }) => {
 
         // Validate email format
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(formData.clientEmail)) {
+        if (!emailRegex.test(emailToSend)) {
             showNotification({
                 type: 'error',
                 title: 'Invalid Email',
                 message: 'Please enter a valid email address.',
-                details: `The email "${formData.clientEmail}" is not in a valid format.`
+                details: `The email "${emailToSend}" is not in a valid format.`
             });
             return;
         }
@@ -807,10 +976,11 @@ const InvoiceGenerator = ({ onFinalDownload, user, setCurrentPage }) => {
             }
 
             // Step 4: Prepare template parameters
+            const emailToSend = sendToEmail.trim() || formData.clientEmail;
             const templateParams = {
-                to_email: formData.clientEmail,
+                to_email: emailToSend,
                 client_name: formData.clientName || 'Valued Client',
-                client_email: formData.clientEmail,
+                client_email: emailToSend,
                 client_phone: formData.clientPhone || 'N/A',
                 invoice_number: formData.invoiceNumber,
                 business_name: formData.businessName,
@@ -840,7 +1010,7 @@ const InvoiceGenerator = ({ onFinalDownload, user, setCurrentPage }) => {
             showNotification({
                 type: 'success',
                 title: 'Email Sent Successfully! 📧',
-                message: `Your invoice has been sent to ${formData.clientEmail}`,
+                message: `Your invoice has been sent to ${emailToSend}`,
                 details: compressedLogo
                     ? 'Invoice sent with compressed logo to stay under email size limits.'
                     : 'Invoice sent successfully.',
@@ -858,13 +1028,21 @@ const InvoiceGenerator = ({ onFinalDownload, user, setCurrentPage }) => {
                 if (error.text.includes('size limit') || error.text.includes('50Kb')) {
                     errorMessage = 'The invoice is too large to send via email.';
                     errorDetails = 'Try using a smaller logo or simpler design. Alternatively, download the PDF and send it manually.';
+                } else if (error.text.includes('Invalid grant') || error.text.includes('Gmail_API')) {
+                    errorMessage = 'Email service authentication issue.';
+                    errorDetails = 'Your Gmail account needs to be reconnected in EmailJS. Please check your EmailJS dashboard settings or contact support for assistance.';
                 } else {
                     errorMessage += 'Please check your EmailJS configuration.';
                     errorDetails = `Error: ${error.text}`;
                 }
             } else if (error.message) {
-                errorMessage += 'Please try again or contact support if the problem persists.';
-                errorDetails = `Error: ${error.message}`;
+                if (error.message.includes('Failed to fetch') || error.message.includes('ERR_CONNECTION')) {
+                    errorMessage = 'Cannot connect to email service.';
+                    errorDetails = 'Please check your internet connection and try again.';
+                } else {
+                    errorMessage += 'Please try again or contact support if the problem persists.';
+                    errorDetails = `Error: ${error.message}`;
+                }
             } else {
                 errorMessage += 'Please check your network connection and EmailJS configuration.';
                 errorDetails = 'Unknown error occurred';
@@ -874,7 +1052,8 @@ const InvoiceGenerator = ({ onFinalDownload, user, setCurrentPage }) => {
                 type: 'error',
                 title: 'Failed to Send Email',
                 message: errorMessage,
-                details: errorDetails
+                details: errorDetails,
+                autoClose: false
             });
         } finally {
             setIsSending(false);
@@ -944,17 +1123,20 @@ const InvoiceGenerator = ({ onFinalDownload, user, setCurrentPage }) => {
         }
     };
 
-    // PDF Document Component - Memoized to prevent re-renders on unrelated state changes
-    const InvoiceDocument = React.useMemo(() => {
-        return customization ? (
-            <CustomInvoiceDocument
-                formData={formData}
-                customization={customization}
-                calculateTotal={calculateTotal}
-                calculateBalance={calculateBalance}
-                invigenLogoSrc={logoBase64}
-            />
-        ) : (
+    // PDF Document Component for PDFViewer - memoized JSX directly
+    const InvoiceDocumentForViewer = React.useMemo(() => {
+        if (customization) {
+            return (
+                <CustomInvoiceDocument
+                    formData={formData}
+                    customization={customization}
+                    calculateTotal={calculateTotal}
+                    calculateBalance={calculateBalance}
+                    invigenLogoSrc={logoBase64}
+                />
+            );
+        }
+        return (
             <Document>
                 <Page size="A4" style={styles.page}>
                     <View style={styles.header}>
@@ -1033,14 +1215,121 @@ const InvoiceGenerator = ({ onFinalDownload, user, setCurrentPage }) => {
                         </View>
                     )}
 
-                    <View style={styles.footer}>
-                        <Text style={styles.footerText}>Generated with</Text>
-                        <Image src={logoBase64} style={styles.footerLogo} />
-                    </View>
+                    {/* Watermark - Only show if not PRO or if watermark removal is not enabled */}
+                    {(!isPro || (customization && !customization.removeWatermark)) && (
+                        <View style={styles.footer}>
+                            <Text style={styles.footerText}>Generated with</Text>
+                            <Image src={logoBase64} style={styles.footerLogo} />
+                        </View>
+                    )}
                 </Page>
             </Document>
         );
-    }, [formData, customization, logoBase64]);
+    }, [formData, customization, logoBase64, isPro, calculateTotal, calculateBalance]);
+
+    // PDF Document Component for PDFDownloadLink - needs to be a React component, not a function
+    const InvoiceDocumentForDownload = React.useMemo(() => {
+        if (customization) {
+            return (
+                <CustomInvoiceDocument
+                    formData={formData}
+                    customization={customization}
+                    calculateTotal={calculateTotal}
+                    calculateBalance={calculateBalance}
+                    invigenLogoSrc={logoBase64}
+                />
+            );
+        }
+        return (
+            <Document>
+                <Page size="A4" style={styles.page}>
+                    <View style={styles.header}>
+                        <Text style={styles.invoiceLabel}>New Invoice</Text>
+                        <Text style={styles.invoiceNumber}>{formData.invoiceNumber}</Text>
+                    </View>
+
+                    <View style={styles.businessCard}>
+                        <View style={styles.businessLeft}>
+                            <Text style={styles.businessName}>{formData.businessName}</Text>
+                            <Text style={styles.businessEmail}>{formData.clientEmail || "info@company.com"}</Text>
+                        </View>
+                        <View style={styles.dateSection}>
+                            <Text style={styles.dateLabel}>Issue Date</Text>
+                            <Text style={styles.dateValue}>
+                                {new Date(formData.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.columns}>
+                        <View style={styles.column}>
+                            <Text style={styles.columnTitle}>Invoice Details</Text>
+                            <Text style={styles.infoText}>Invoice #: {formData.invoiceNumber}</Text>
+                            <Text style={styles.infoText}>Currency: {formData.currency}</Text>
+                        </View>
+                        <View style={styles.column}>
+                            <Text style={styles.columnTitle}>Bill To</Text>
+                            {formData.clientName && <Text style={styles.clientName}>{formData.clientName}</Text>}
+                            {formData.clientEmail && <Text style={styles.infoText}>{formData.clientEmail}</Text>}
+                            {formData.clientPhone && <Text style={styles.infoText}>{formData.clientPhone}</Text>}
+                        </View>
+                    </View>
+
+                    <View style={styles.table}>
+                        <Text style={styles.itemsHeader}>Invoice Items</Text>
+
+                        <View style={styles.tableHeader}>
+                            <Text style={[styles.tableHeaderText, styles.col1]}>Description</Text>
+                            <Text style={[styles.tableHeaderText, styles.col2]}>Qty</Text>
+                            <Text style={[styles.tableHeaderText, styles.col3]}>Rate</Text>
+                            <Text style={[styles.tableHeaderText, styles.col4]}>Amount</Text>
+                        </View>
+
+                        {formData.items.map((item, idx) => (
+                            <View key={idx} style={styles.tableRow}>
+                                <Text style={[styles.itemName, styles.col1]}>{item.name}</Text>
+                                <Text style={[styles.itemQty, styles.col2]}>{item.quantity < 10 ? `0${item.quantity}` : item.quantity}</Text>
+                                <Text style={[styles.itemPrice, styles.col3]}>{formatCurrency(item.price, formData.currency)}</Text>
+                                <Text style={[styles.itemTotal, styles.col4]}>{formatCurrency(item.quantity * item.price, formData.currency)}</Text>
+                            </View>
+                        ))}
+                    </View>
+
+                    <View style={styles.summary}>
+                        <View style={styles.summaryRow}>
+                            <Text style={styles.summaryLabel}>Subtotal</Text>
+                            <Text style={styles.summaryValue}>{formatCurrency(calculateTotal(), formData.currency)}</Text>
+                        </View>
+                        {formData.amountPaid > 0 && (
+                            <View style={styles.summaryRow}>
+                                <Text style={styles.summaryLabel}>Paid</Text>
+                                <Text style={styles.summaryValue}>-{formatCurrency(formData.amountPaid, formData.currency)}</Text>
+                            </View>
+                        )}
+                        <View style={styles.totalRow}>
+                            <Text style={styles.totalLabel}>Total Due</Text>
+                            <Text style={styles.totalValue}>{formatCurrency(calculateBalance(), formData.currency)}</Text>
+                        </View>
+                    </View>
+
+                    {formData.note && (
+                        <View style={styles.notes}>
+                            <Text style={styles.notesTitle}>Notes</Text>
+                            <Text style={styles.notesText}>{formData.note}</Text>
+                        </View>
+                    )}
+
+                    {/* Watermark - Only show if not PRO or if watermark removal is not enabled */}
+                    {(!isPro || (customization && !customization.removeWatermark)) && (
+                        <View style={styles.footer}>
+                            <Text style={styles.footerText}>Generated with</Text>
+                            <Image src={logoBase64} style={styles.footerLogo} />
+                        </View>
+                    )}
+                </Page>
+            </Document>
+        );
+    }, [formData, customization, logoBase64, isPro, calculateTotal, calculateBalance]);
 
     // Show customizer if active
     if (showCustomizer) {
@@ -1086,20 +1375,58 @@ const InvoiceGenerator = ({ onFinalDownload, user, setCurrentPage }) => {
                 {!showInvoice ? (
                     <>
                         <div className="text-center mb-12">
-                            <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4 tracking-tighter">
-                                Generate Invoice
-                            </h1>
-                            <p className="text-xl text-gray-400">
-                                Create professional invoices in seconds
-                            </p>
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex-1"></div>
+                                <div className="flex-1 text-center">
+                                    <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4 tracking-tighter">
+                                        Generate Invoice
+                                    </h1>
+                                    <p className="text-xl text-gray-400">
+                                        Create professional invoices in seconds
+                                    </p>
+                                </div>
+                                <div className="flex-1 flex justify-end">
+                                    {/* PRO Feature: Live Preview Toggle */}
+                                    {isPro && formData.businessName && formData.invoiceNumber ? (
+                                        <button
+                                            onClick={() => setShowPreview(!showPreview)}
+                                            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-xl font-semibold hover:shadow-xl hover:shadow-blue-500/30 transform hover:scale-105 transition-all duration-200"
+                                        >
+                                            {showPreview ? (
+                                                <>
+                                                    <EyeOff className="w-4 h-4" />
+                                                    Hide Preview
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Eye className="w-4 h-4" />
+                                                    Show Preview
+                                                </>
+                                            )}
+                                        </button>
+                                    ) : isPro ? (
+                                        <div className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-gray-500 rounded-xl text-sm">
+                                            <Crown className="w-4 h-4" />
+                                            <span>Fill business info to preview</span>
+                                        </div>
+                                    ) : null}
+                                </div>
+                            </div>
                         </div>
 
-                        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 sm:p-8 shadow-xl">
+                        <div className={`${showPreview && isPro ? 'grid grid-cols-1 lg:grid-cols-2 gap-6' : ''}`}>
+                            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 sm:p-8 shadow-xl">
 
                             <div className="mb-8">
                                 <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                                     <Building2 className="w-5 h-5 text-blue-400" />
                                     Business Information
+                                    {isPro && (
+                                        <span className="ml-2 px-2 py-1 bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-xs font-semibold rounded-full flex items-center gap-1">
+                                            <Crown className="w-3 h-3" />
+                                            Auto-saved
+                                        </span>
+                                    )}
                                 </h2>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                     <div>
@@ -1125,10 +1452,78 @@ const InvoiceGenerator = ({ onFinalDownload, user, setCurrentPage }) => {
                                             value={formData.invoiceNumber}
                                             onChange={handleFormChange}
                                             className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                            placeholder="INV-001"
+                                            placeholder="Auto-generated"
                                         />
+                                        {user && formData.invoiceNumber && (
+                                            <p className="text-xs text-gray-500 mt-1">Auto-generated from your account. You can change it.</p>
+                                        )}
                                     </div>
                                 </div>
+
+                                {/* PRO Feature: Logo Upload */}
+                                {isPro && (
+                                    <div className="mt-6">
+                                        <label className="block text-sm font-semibold text-gray-300 mb-2 flex items-center gap-2">
+                                            <Crown className="w-4 h-4 text-yellow-400" />
+                                            Company Logo (PRO)
+                                        </label>
+                                        {!logoPreview ? (
+                                            <label className="block">
+                                                <input
+                                                    ref={logoInputRef}
+                                                    type="file"
+                                                    accept="image/png,image/jpeg,image/jpg,image/svg+xml"
+                                                    onChange={handleLogoUpload}
+                                                    className="hidden"
+                                                />
+                                                <div className="border-2 border-dashed border-gray-700 hover:border-blue-500/50 rounded-xl p-6 text-center cursor-pointer bg-gray-800/30 hover:bg-gray-800/60 transition-all duration-300">
+                                                    <Upload className="w-8 h-8 text-gray-600 mx-auto mb-2" />
+                                                    <p className="text-gray-300 text-sm font-medium">Click to upload logo</p>
+                                                    <p className="text-xs text-gray-500 mt-1">PNG, JPG, or SVG • Max 2MB</p>
+                                                </div>
+                                            </label>
+                                        ) : (
+                                            <div className="space-y-3">
+                                                <div className="bg-gray-800 border border-gray-700 rounded-xl p-4 flex items-center justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <img
+                                                            src={logoPreview}
+                                                            alt="Logo preview"
+                                                            className="h-12 w-auto object-contain"
+                                                        />
+                                                        <div>
+                                                            <p className="text-white text-sm font-medium">Logo uploaded</p>
+                                                            <p className="text-gray-400 text-xs">{logoFile?.name}</p>
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        onClick={handleRemoveLogo}
+                                                        className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+                                                        title="Remove logo"
+                                                    >
+                                                        <X className="w-5 h-5 text-gray-400 hover:text-red-400" />
+                                                    </button>
+                                                </div>
+                                                <label className="block">
+                                                    <input
+                                                        ref={logoInputRef}
+                                                        type="file"
+                                                        accept="image/png,image/jpeg,image/jpg,image/svg+xml"
+                                                        onChange={handleLogoUpload}
+                                                        className="hidden"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => logoInputRef.current?.click()}
+                                                        className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-sm font-medium transition-colors"
+                                                    >
+                                                        Change Logo
+                                                    </button>
+                                                </label>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
 
                                 <div className="mt-6">
                                     <label className="block text-sm font-semibold text-gray-300 mb-2">Date</label>
@@ -1323,10 +1718,15 @@ const InvoiceGenerator = ({ onFinalDownload, user, setCurrentPage }) => {
                             <div className="flex flex-col sm:flex-row gap-4">
                                 <button
                                     onClick={handleCustomize}
-                                    className="flex-1 inline-flex items-center justify-center gap-3 px-8 py-4 bg-gray-800 hover:bg-gray-700 text-white rounded-xl text-lg font-semibold border-2 border-gray-700 hover:border-gray-600 transition-all duration-300"
+                                    className="flex-1 inline-flex items-center justify-center gap-3 px-8 py-4 bg-gray-800 hover:bg-gray-700 text-white rounded-xl text-lg font-semibold border-2 border-gray-700 hover:border-gray-600 transition-all duration-300 relative"
                                 >
                                     <Palette className="w-5 h-5" />
                                     Customize Invoice
+                                    {isPro && (
+                                        <span className="absolute -top-2 -right-2 px-2 py-1 bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-xs font-bold rounded-full">
+                                            PRO
+                                        </span>
+                                    )}
                                 </button>
 
                                 <button
@@ -1337,6 +1737,36 @@ const InvoiceGenerator = ({ onFinalDownload, user, setCurrentPage }) => {
                                     <ArrowRight className="w-5 h-5" />
                                 </button>
                             </div>
+                        </div>
+
+                        {/* PRO Feature: Live Preview Panel */}
+                        {showPreview && isPro && formData.businessName && formData.invoiceNumber && (
+                            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                                        <Eye className="w-5 h-5 text-blue-400" />
+                                        Live Preview
+                                        <span className="ml-2 px-2 py-1 bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-xs font-semibold rounded-full">
+                                            PRO
+                                        </span>
+                                    </h2>
+                                </div>
+                                <div className="rounded-xl overflow-hidden border border-gray-800 shadow-2xl bg-white" style={{ height: "600px" }}>
+                                    {formData && logoBase64 ? (
+                                        <PDFViewer width="100%" height="100%">
+                                            {InvoiceDocumentForViewer}
+                                        </PDFViewer>
+                                    ) : (
+                                        <div className="flex items-center justify-center h-full text-gray-400">
+                                            <div className="text-center">
+                                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400 mx-auto mb-4"></div>
+                                                <p>Loading preview...</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                         </div>
                     </>
                 ) : (
@@ -1354,6 +1784,7 @@ const InvoiceGenerator = ({ onFinalDownload, user, setCurrentPage }) => {
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Download Invoice Section */}
                             <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-2xl p-6 shadow-xl">
                                 <div className="flex items-center gap-3 mb-4">
                                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-600 to-emerald-500 flex items-center justify-center">
@@ -1367,7 +1798,7 @@ const InvoiceGenerator = ({ onFinalDownload, user, setCurrentPage }) => {
                                 {/* PHASE 8.5: Download button with PRO check */}
                                 {isPro ? (
                                     <PDFDownloadLink
-                                        document={InvoiceDocument}
+                                        document={InvoiceDocumentForDownload}
                                         fileName={`${formData.businessName || "Invoice"}_${formData.invoiceNumber || "temp"}.pdf`}
                                         className="w-full inline-flex items-center justify-center gap-3 bg-gradient-to-r from-green-600 to-emerald-500 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-xl hover:shadow-green-500/30 transform hover:scale-105 transition-all duration-300"
                                     >
@@ -1419,46 +1850,76 @@ const InvoiceGenerator = ({ onFinalDownload, user, setCurrentPage }) => {
                                 )}
                             </div>
 
+                            {/* WhatsApp Section */}
                             <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-2xl p-6 shadow-xl">
                                 <div className="flex items-center gap-3 mb-4">
-                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center">
-                                        <Mail className="w-6 h-6 text-white" />
+                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
+                                        <MessageCircle className="w-6 h-6 text-white" />
                                     </div>
                                     <div>
-                                        <h3 className="text-lg font-bold text-white">Send via Email</h3>
+                                        <h3 className="text-lg font-bold text-white">Send via WhatsApp</h3>
                                         <p className="text-sm text-gray-400">
-                                            {formData.clientEmail
-                                                ? `${formData.clientEmail}`
-                                                : "No email provided"}
+                                            {formData.clientPhone
+                                                ? `Default: ${formData.clientPhone}`
+                                                : "Enter phone number"}
                                         </p>
                                     </div>
                                 </div>
+                                <div className="mb-4">
+                                    <input
+                                        type="tel"
+                                        placeholder={formData.clientPhone || "Enter phone number (e.g., +1234567890)"}
+                                        value={sendToPhone}
+                                        onChange={(e) => setSendToPhone(e.target.value)}
+                                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+                                    />
+                                </div>
                                 <button
-                                    onClick={handleSendEmail}
-                                    disabled={!formData.clientEmail || isSending || emailSent}
-                                    className={`w-full inline-flex items-center justify-center gap-3 px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${emailSent
-                                        ? 'bg-green-600 text-white'
-                                        : formData.clientEmail && !isSending
-                                            ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white hover:shadow-xl hover:shadow-blue-500/30 transform hover:scale-105'
-                                            : 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                                        }`}
+                                    onClick={() => {
+                                        const phoneToSend = sendToPhone.trim() || formData.clientPhone;
+                                        if (!phoneToSend) {
+                                            showNotification({
+                                                type: 'warning',
+                                                title: 'Phone Number Required',
+                                                message: 'Please enter a phone number to send via WhatsApp.',
+                                                autoClose: true,
+                                                autoCloseDelay: 3000
+                                            });
+                                            return;
+                                        }
+
+                                        // Format phone number (remove spaces, dashes, etc.)
+                                        const formattedPhone = phoneToSend.replace(/[\s\-\(\)]/g, '');
+                                        
+                                        // Generate invoice summary message
+                                        const invoiceSummary = `Invoice #${formData.invoiceNumber}\n` +
+                                            `From: ${formData.businessName}\n` +
+                                            `Date: ${new Date(formData.date).toLocaleDateString()}\n` +
+                                            `Total: ${formatCurrency(calculateBalance(), formData.currency)}\n\n` +
+                                            `Please find your invoice attached.`;
+
+                                        // Create WhatsApp link
+                                        const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(invoiceSummary)}`;
+                                        
+                                        // Open WhatsApp in new tab
+                                        window.open(whatsappUrl, '_blank');
+                                        
+                                        showNotification({
+                                            type: 'success',
+                                            title: 'Opening WhatsApp',
+                                            message: `WhatsApp is opening for ${phoneToSend}. You can attach the PDF manually.`,
+                                            autoClose: true,
+                                            autoCloseDelay: 3000
+                                        });
+                                    }}
+                                    disabled={(!sendToPhone.trim() && !formData.clientPhone)}
+                                    className={`w-full inline-flex items-center justify-center gap-3 px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${(sendToPhone.trim() || formData.clientPhone)
+                                        ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:shadow-xl hover:shadow-green-500/30 transform hover:scale-105'
+                                        : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                                    }`}
                                 >
-                                    {emailSent ? (
-                                        <>
-                                            <CheckCircle className="w-5 h-5" />
-                                            Email Sent!
-                                        </>
-                                    ) : isSending ? (
-                                        <>
-                                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                                            Sending...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Send className="w-5 h-5" />
-                                            Send Invoice
-                                        </>
-                                    )}
+                                    <MessageCircle className="w-5 h-5" />
+                                    Open WhatsApp
                                 </button>
                             </div>
                         </div>
@@ -1468,9 +1929,18 @@ const InvoiceGenerator = ({ onFinalDownload, user, setCurrentPage }) => {
                                 Invoice Preview
                             </h2>
                             <div className="rounded-xl overflow-hidden border border-gray-800 shadow-2xl" style={{ height: "800px" }}>
-                                <PDFViewer width="100%" height="100%">
-                                    {InvoiceDocument}
-                                </PDFViewer>
+                                {formData && logoBase64 ? (
+                                    <PDFViewer width="100%" height="100%">
+                                        {InvoiceDocumentForViewer}
+                                    </PDFViewer>
+                                ) : (
+                                    <div className="flex items-center justify-center h-full text-gray-400">
+                                        <div className="text-center">
+                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400 mx-auto mb-4"></div>
+                                            <p>Loading preview...</p>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -1535,7 +2005,7 @@ const InvoiceGenerator = ({ onFinalDownload, user, setCurrentPage }) => {
                                         onClick={handleSubmitFeedback}
                                         className="w-full bg-gradient-to-r from-blue-600 to-cyan-500 text-white px-8 py-4 rounded-xl text-lg font-semibold hover:shadow-2xl hover:shadow-blue-500/30 transform hover:scale-[1.02] transition-all duration-300 flex items-center justify-center gap-3"
                                     >
-                                        <Send className="w-5 h-5" />
+                                        <CheckCircle className="w-5 h-5" />
                                         Submit Feedback
                                     </button>
                                 </div>
