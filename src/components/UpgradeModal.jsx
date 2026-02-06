@@ -25,7 +25,7 @@ const UpgradeModal = ({ isOpen, onClose, featureName, setCurrentPage }) => {
                 return (
                     <>
                         This feature is available on Pro.<br />
-                        Upgrade to unlock PDF downloads, email invoices, and remove the Invigen watermark.
+                        Upgrade to unlock PDF downloads, WhatsApp invoices, and remove the Invigen watermark.
                     </>
                 );
             }
@@ -33,7 +33,7 @@ const UpgradeModal = ({ isOpen, onClose, featureName, setCurrentPage }) => {
         return (
             <>
                 This feature is available on Pro.<br />
-                Upgrade to unlock PDF downloads, email invoices, and remove the Invigen watermark.
+                Upgrade to unlock PDF downloads, WhatsApp invoices, and remove the Invigen watermark.
             </>
         );
     };
@@ -85,7 +85,7 @@ const UpgradeModal = ({ isOpen, onClose, featureName, setCurrentPage }) => {
                             </li>
                             <li className="flex items-center gap-3">
                                 <span className="text-green-400 font-bold">✓</span>
-                                <span>Email invoices directly</span>
+                                <span>WhatsApp invoices directly</span>
                             </li>
                             <li className="flex items-center gap-3">
                                 <span className="text-green-400 font-bold">✓</span>

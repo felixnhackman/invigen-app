@@ -79,7 +79,7 @@ export async function getProfile(userId) {
     }
     const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, avatar_url, phone, business_info, updated_at, created_at')
+        .select('id, full_name, avatar_url, phone, business_info, whatsapp_message_template, updated_at, created_at')
         .eq('id', userId)
         .maybeSingle();
     if (error) throw error;
@@ -183,4 +183,120 @@ export async function uploadAvatar(userId, file) {
 
     const { data: urlData } = supabase.storage.from(AVATARS_BUCKET).getPublicUrl(path);
     return urlData.publicUrl;
+}
+
+/**
+ * Product Catalog Functions
+ */
+
+/**
+ * Get all products for a user
+ */
+export async function getProducts(userId) {
+    if (!supabase) {
+        throw new Error('Supabase not configured');
+    }
+    const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+}
+
+/**
+ * Create a new product
+ */
+export async function createProduct(userId, product) {
+    if (!supabase) {
+        throw new Error('Supabase not configured');
+    }
+    const { data, error } = await supabase
+        .from('products')
+        .insert({
+            user_id: userId,
+            name: product.name,
+            description: product.description || null,
+            price: product.price || 0,
+            currency: product.currency || 'GHS',
+        })
+        .select()
+        .single();
+    if (error) throw error;
+    return data;
+}
+
+/**
+ * Update a product
+ */
+export async function updateProduct(productId, updates) {
+    if (!supabase) {
+        throw new Error('Supabase not configured');
+    }
+    const { data, error } = await supabase
+        .from('products')
+        .update({
+            ...updates,
+            updated_at: new Date().toISOString(),
+        })
+        .eq('id', productId)
+        .select()
+        .single();
+    if (error) throw error;
+    return data;
+}
+
+/**
+ * Delete a product
+ */
+export async function deleteProduct(productId) {
+    if (!supabase) {
+        throw new Error('Supabase not configured');
+    }
+    const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', productId);
+    if (error) throw error;
+}
+
+/**
+ * WhatsApp Message Template Functions
+ */
+
+/**
+ * Get WhatsApp message template
+ */
+export async function getWhatsAppMessageTemplate(userId) {
+    if (!supabase) {
+        throw new Error('Supabase not configured');
+    }
+    const { data, error } = await supabase
+        .from('profiles')
+        .select('whatsapp_message_template')
+        .eq('id', userId)
+        .maybeSingle();
+    if (error) throw error;
+    return data?.whatsapp_message_template || null;
+}
+
+/**
+ * Save WhatsApp message template
+ */
+export async function saveWhatsAppMessageTemplate(userId, template) {
+    if (!supabase) {
+        throw new Error('Supabase not configured');
+    }
+    const { data, error } = await supabase
+        .from('profiles')
+        .update({
+            whatsapp_message_template: template,
+            updated_at: new Date().toISOString(),
+        })
+        .eq('id', userId)
+        .select('whatsapp_message_template')
+        .single();
+    if (error) throw error;
+    return data.whatsapp_message_template;
 }

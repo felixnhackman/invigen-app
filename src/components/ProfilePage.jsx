@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { User, Mail, Phone, ArrowLeft, LogOut, Edit2, Save, Camera, Crown, TrendingUp, CheckCircle, XCircle } from 'lucide-react';
-import { getProfile, updateProfile, upsertProfile, uploadAvatar } from '../lib/supabase';
+import { User, Mail, Phone, ArrowLeft, LogOut, Edit2, Save, Camera, Crown, TrendingUp, CheckCircle, XCircle, Package, Plus, Trash2, MessageCircle, AlertTriangle, X } from 'lucide-react';
+import { getProfile, updateProfile, upsertProfile, uploadAvatar, getProducts, createProduct, updateProduct, deleteProduct, getWhatsAppMessageTemplate, saveWhatsAppMessageTemplate } from '../lib/supabase';
 import { useSubscription } from '../hooks/useSubscription';
 
 const ProfilePage = ({ user, setCurrentPage, onLogout }) => {
     // PHASE 8.6: Subscription hook for plan and usage info
-    const { plan, isPro, isFree, invoiceCount, invoiceLimit, isLoading: subscriptionLoading } = useSubscription();
+    const { plan, isPro, isFree, invoiceCount, invoiceLimit, isLoading: subscriptionLoading, subscriptionReminder, expiresAt, daysUntilExpiration } = useSubscription();
     
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -17,6 +17,18 @@ const ProfilePage = ({ user, setCurrentPage, onLogout }) => {
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
     const [avatarKey, setAvatarKey] = useState(0);
     const photoInputRef = useRef(null);
+    
+    // Product catalog state
+    const [products, setProducts] = useState([]);
+    const [productsLoading, setProductsLoading] = useState(false);
+    const [showAddProduct, setShowAddProduct] = useState(false);
+    const [editingProduct, setEditingProduct] = useState(null);
+    const [productForm, setProductForm] = useState({ name: '', description: '', price: '', currency: 'GHS' });
+    
+    // WhatsApp message template state
+    const [whatsappTemplate, setWhatsappTemplate] = useState('');
+    const [whatsappTemplateLoading, setWhatsappTemplateLoading] = useState(false);
+    const [editingWhatsApp, setEditingWhatsApp] = useState(false);
 
     useEffect(() => {
         if (!user) setCurrentPage?.('home');
@@ -27,12 +39,18 @@ const ProfilePage = ({ user, setCurrentPage, onLogout }) => {
         let cancelled = false;
         setLoading(true);
         setError('');
-        getProfile(user.id)
-            .then((data) => {
+        Promise.all([
+            getProfile(user.id),
+            getProducts(user.id).catch(() => []),
+            getWhatsAppMessageTemplate(user.id).catch(() => null)
+        ])
+            .then(([profileData, productsData, templateData]) => {
                 if (!cancelled) {
-                    setProfile(data);
-                    setEditName(data?.full_name ?? user.name ?? '');
-                    setEditPhone(data?.phone ?? '');
+                    setProfile(profileData);
+                    setEditName(profileData?.full_name ?? user.name ?? '');
+                    setEditPhone(profileData?.phone ?? '');
+                    setProducts(productsData);
+                    setWhatsappTemplate(templateData || 'Invoice #{{invoiceNumber}}\nFrom: {{businessName}}\nDate: {{date}}\nTotal: {{total}}\n\nPlease find your invoice attached.');
                 }
             })
             .catch((err) => {
@@ -111,14 +129,90 @@ const ProfilePage = ({ user, setCurrentPage, onLogout }) => {
         }
     };
 
+    // Product handlers
+    const handleAddProduct = async () => {
+        if (!productForm.name.trim() || !productForm.price) {
+            setError('Product name and price are required');
+            return;
+        }
+        setProductsLoading(true);
+        setError('');
+        try {
+            const newProduct = await createProduct(user.id, {
+                name: productForm.name,
+                description: productForm.description,
+                price: parseFloat(productForm.price),
+                currency: productForm.currency,
+            });
+            setProducts([...products, newProduct]);
+            setProductForm({ name: '', description: '', price: '', currency: 'GHS' });
+            setShowAddProduct(false);
+        } catch (err) {
+            setError(err.message || 'Failed to add product');
+        } finally {
+            setProductsLoading(false);
+        }
+    };
+
+    const handleUpdateProduct = async (productId) => {
+        if (!productForm.name.trim() || !productForm.price) {
+            setError('Product name and price are required');
+            return;
+        }
+        setProductsLoading(true);
+        setError('');
+        try {
+            const updated = await updateProduct(productId, {
+                name: productForm.name,
+                description: productForm.description,
+                price: parseFloat(productForm.price),
+                currency: productForm.currency,
+            });
+            setProducts(products.map(p => p.id === productId ? updated : p));
+            setEditingProduct(null);
+            setProductForm({ name: '', description: '', price: '', currency: 'GHS' });
+        } catch (err) {
+            setError(err.message || 'Failed to update product');
+        } finally {
+            setProductsLoading(false);
+        }
+    };
+
+    const handleDeleteProduct = async (productId) => {
+        if (!confirm('Are you sure you want to delete this product?')) return;
+        setProductsLoading(true);
+        setError('');
+        try {
+            await deleteProduct(productId);
+            setProducts(products.filter(p => p.id !== productId));
+        } catch (err) {
+            setError(err.message || 'Failed to delete product');
+        } finally {
+            setProductsLoading(false);
+        }
+    };
+
+    const handleSaveWhatsAppTemplate = async () => {
+        setWhatsappTemplateLoading(true);
+        setError('');
+        try {
+            await saveWhatsAppMessageTemplate(user.id, whatsappTemplate);
+            setEditingWhatsApp(false);
+        } catch (err) {
+            setError(err.message || 'Failed to save WhatsApp template');
+        } finally {
+            setWhatsappTemplateLoading(false);
+        }
+    };
+
     if (!user) return null;
 
     const displayName = profile?.full_name ?? user.name ?? '—';
     const displayPhone = profile?.phone ?? '—';
 
     return (
-        <section className="min-h-screen pt-28 pb-16 px-4 bg-gray-950 flex items-center justify-center">
-            <div className="w-full max-w-md">
+        <section className="min-h-screen pt-28 pb-16 px-4 bg-gray-950">
+            <div className="max-w-4xl mx-auto">
                 <div className="bg-gray-900/80 backdrop-blur border border-gray-800 rounded-2xl p-8 shadow-xl">
                     <div className="text-center mb-8">
                         <input
@@ -318,6 +412,46 @@ const ProfilePage = ({ user, setCurrentPage, onLogout }) => {
                         </>
                     )}
 
+                    {/* Subscription Expiration Reminder */}
+                    {subscriptionReminder && (
+                        <div className={`mt-6 p-4 rounded-xl border ${
+                            subscriptionReminder.level === 'expired' ? 'bg-red-500/10 border-red-500/30' :
+                            subscriptionReminder.level === 'critical' ? 'bg-orange-500/10 border-orange-500/30' :
+                            subscriptionReminder.level === 'warning' ? 'bg-yellow-500/10 border-yellow-500/30' :
+                            'bg-blue-500/10 border-blue-500/30'
+                        }`}>
+                            <div className="flex items-start gap-3">
+                                <AlertTriangle className={`w-5 h-5 flex-shrink-0 ${
+                                    subscriptionReminder.level === 'expired' ? 'text-red-400' :
+                                    subscriptionReminder.level === 'critical' ? 'text-orange-400' :
+                                    subscriptionReminder.level === 'warning' ? 'text-yellow-400' :
+                                    'text-blue-400'
+                                }`} />
+                                <div className="flex-1">
+                                    <p className={`text-sm font-semibold ${
+                                        subscriptionReminder.level === 'expired' ? 'text-red-400' :
+                                        subscriptionReminder.level === 'critical' ? 'text-orange-400' :
+                                        subscriptionReminder.level === 'warning' ? 'text-yellow-400' :
+                                        'text-blue-400'
+                                    }`}>
+                                        {subscriptionReminder.message}
+                                    </p>
+                                    {expiresAt && (
+                                        <p className="text-xs text-gray-400 mt-1">
+                                            Expires: {new Date(expiresAt).toLocaleDateString()}
+                                        </p>
+                                    )}
+                                </div>
+                                <button
+                                    onClick={() => setCurrentPage('pricing')}
+                                    className="text-xs px-3 py-1 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                                >
+                                    Renew
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     {/* PHASE 8.6: Upgrade to Pro Button (only show for FREE users) */}
                     {!subscriptionLoading && isFree && (
                         <div className="mt-6">
@@ -330,8 +464,255 @@ const ProfilePage = ({ user, setCurrentPage, onLogout }) => {
                             </button>
                         </div>
                     )}
+                </div>
 
-                    <div className="mt-8 flex flex-col sm:flex-row gap-3">
+                {/* Product Catalog Section */}
+                <div className="mt-6 bg-gray-900/80 backdrop-blur border border-gray-800 rounded-2xl p-8 shadow-xl">
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-3">
+                            <Package className="w-6 h-6 text-blue-400" />
+                            <h2 className="text-xl font-bold text-white">Product Catalog</h2>
+                        </div>
+                        <button
+                            onClick={() => {
+                                setShowAddProduct(true);
+                                setEditingProduct(null);
+                                setProductForm({ name: '', description: '', price: '', currency: 'GHS' });
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-all"
+                        >
+                            <Plus className="w-4 h-4" />
+                            Add Product
+                        </button>
+                    </div>
+
+                    {showAddProduct && (
+                        <div className="mb-6 p-4 bg-gray-800/50 rounded-xl border border-gray-700">
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm text-gray-400 mb-1">Product Name *</label>
+                                    <input
+                                        type="text"
+                                        value={productForm.name}
+                                        onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
+                                        className="w-full px-3 py-2 rounded-lg bg-gray-900 border border-gray-600 text-white"
+                                        placeholder="e.g., Web Design Service"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm text-gray-400 mb-1">Description</label>
+                                    <textarea
+                                        value={productForm.description}
+                                        onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
+                                        className="w-full px-3 py-2 rounded-lg bg-gray-900 border border-gray-600 text-white"
+                                        rows="2"
+                                        placeholder="Optional description"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm text-gray-400 mb-1">Price *</label>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            value={productForm.price}
+                                            onChange={(e) => setProductForm({ ...productForm, price: e.target.value })}
+                                            className="w-full px-3 py-2 rounded-lg bg-gray-900 border border-gray-600 text-white"
+                                            placeholder="0.00"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm text-gray-400 mb-1">Currency</label>
+                                        <select
+                                            value={productForm.currency}
+                                            onChange={(e) => setProductForm({ ...productForm, currency: e.target.value })}
+                                            className="w-full px-3 py-2 rounded-lg bg-gray-900 border border-gray-600 text-white"
+                                        >
+                                            <option value="GHS">GHS</option>
+                                            <option value="USD">USD</option>
+                                            <option value="EUR">EUR</option>
+                                            <option value="GBP">GBP</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={editingProduct ? () => handleUpdateProduct(editingProduct) : handleAddProduct}
+                                        disabled={productsLoading}
+                                        className="flex-1 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                                    >
+                                        {productsLoading ? 'Saving...' : editingProduct ? 'Update' : 'Add'}
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setShowAddProduct(false);
+                                            setEditingProduct(null);
+                                            setProductForm({ name: '', description: '', price: '', currency: 'GHS' });
+                                        }}
+                                        className="px-4 py-2 rounded-lg bg-gray-700 text-gray-300 hover:bg-gray-600"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {products.length === 0 ? (
+                        <p className="text-gray-400 text-center py-8">No products yet. Add your first product to quickly add items to invoices.</p>
+                    ) : (
+                        <div className="space-y-3">
+                            {products.map((product) => (
+                                <div key={product.id} className="p-4 bg-gray-800/50 rounded-xl border border-gray-700 flex items-center justify-between">
+                                    {editingProduct === product.id ? (
+                                        <div className="flex-1 space-y-3">
+                                            <input
+                                                type="text"
+                                                value={productForm.name}
+                                                onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
+                                                className="w-full px-3 py-2 rounded-lg bg-gray-900 border border-gray-600 text-white text-sm"
+                                                placeholder="Product name"
+                                            />
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    value={productForm.price}
+                                                    onChange={(e) => setProductForm({ ...productForm, price: e.target.value })}
+                                                    className="px-3 py-2 rounded-lg bg-gray-900 border border-gray-600 text-white text-sm"
+                                                    placeholder="Price"
+                                                />
+                                                <select
+                                                    value={productForm.currency}
+                                                    onChange={(e) => setProductForm({ ...productForm, currency: e.target.value })}
+                                                    className="px-3 py-2 rounded-lg bg-gray-900 border border-gray-600 text-white text-sm"
+                                                >
+                                                    <option value="GHS">GHS</option>
+                                                    <option value="USD">USD</option>
+                                                    <option value="EUR">EUR</option>
+                                                    <option value="GBP">GBP</option>
+                                                </select>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => handleUpdateProduct(product.id)}
+                                                    disabled={productsLoading}
+                                                    className="px-3 py-1 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700"
+                                                >
+                                                    Save
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setEditingProduct(null);
+                                                        setProductForm({ name: '', description: '', price: '', currency: 'GHS' });
+                                                    }}
+                                                    className="px-3 py-1 rounded-lg bg-gray-700 text-gray-300 text-sm hover:bg-gray-600"
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="flex-1">
+                                                <h3 className="text-white font-semibold">{product.name}</h3>
+                                                {product.description && (
+                                                    <p className="text-gray-400 text-sm mt-1">{product.description}</p>
+                                                )}
+                                                <p className="text-blue-400 text-sm mt-1">
+                                                    {product.currency} {parseFloat(product.price).toFixed(2)}
+                                                </p>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => {
+                                                        setEditingProduct(product.id);
+                                                        setProductForm({
+                                                            name: product.name,
+                                                            description: product.description || '',
+                                                            price: product.price.toString(),
+                                                            currency: product.currency || 'GHS',
+                                                        });
+                                                        setShowAddProduct(false);
+                                                    }}
+                                                    className="p-2 rounded-lg bg-gray-700 text-gray-300 hover:bg-gray-600"
+                                                >
+                                                    <Edit2 className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteProduct(product.id)}
+                                                    disabled={productsLoading}
+                                                    className="p-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {/* WhatsApp Message Template Section */}
+                <div className="mt-6 bg-gray-900/80 backdrop-blur border border-gray-800 rounded-2xl p-8 shadow-xl">
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-3">
+                            <MessageCircle className="w-6 h-6 text-green-400" />
+                            <h2 className="text-xl font-bold text-white">WhatsApp Message Template</h2>
+                        </div>
+                        {!editingWhatsApp && (
+                            <button
+                                onClick={() => setEditingWhatsApp(true)}
+                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-green-600 text-white hover:bg-green-700 transition-all"
+                            >
+                                <Edit2 className="w-4 h-4" />
+                                Edit
+                            </button>
+                        )}
+                    </div>
+
+                    {editingWhatsApp ? (
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-2">
+                                    Customize your WhatsApp message. Use placeholders: {'{'}invoiceNumber{'}'}, {'{'}businessName{'}'}, {'{'}date{'}'}, {'{'}total{'}'}
+                                </label>
+                                <textarea
+                                    value={whatsappTemplate}
+                                    onChange={(e) => setWhatsappTemplate(e.target.value)}
+                                    className="w-full px-4 py-3 rounded-lg bg-gray-800 border border-gray-700 text-white min-h-[150px]"
+                                    placeholder="Invoice #{{invoiceNumber}}..."
+                                />
+                            </div>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={handleSaveWhatsAppTemplate}
+                                    disabled={whatsappTemplateLoading}
+                                    className="flex-1 px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+                                >
+                                    {whatsappTemplateLoading ? 'Saving...' : 'Save Template'}
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setEditingWhatsApp(false);
+                                        getWhatsAppMessageTemplate(user.id).then(setWhatsappTemplate).catch(() => {});
+                                    }}
+                                    className="px-4 py-2 rounded-lg bg-gray-700 text-gray-300 hover:bg-gray-600"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="p-4 bg-gray-800/50 rounded-xl border border-gray-700">
+                            <p className="text-gray-300 whitespace-pre-wrap">{whatsappTemplate}</p>
+                        </div>
+                    )}
+                </div>
+
+                <div className="mt-8 flex flex-col sm:flex-row gap-3">
                         <button
                             onClick={() => setCurrentPage('home')}
                             className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-gray-400 hover:text-white hover:bg-gray-800/50 transition-all"
@@ -347,7 +728,6 @@ const ProfilePage = ({ user, setCurrentPage, onLogout }) => {
                             Logout
                         </button>
                     </div>
-                </div>
             </div>
         </section>
     );

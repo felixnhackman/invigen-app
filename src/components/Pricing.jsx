@@ -51,7 +51,7 @@ const Pricing = ({ setCurrentPage, user }) => {
                 'Everything in Free',
                 'Unlimited invoices',
                 'Download PDF invoices',
-                'Email invoices directly',
+                'WhatsApp invoices directly',
                 'Remove watermark',
                 'Custom branding',
                 'Priority support'

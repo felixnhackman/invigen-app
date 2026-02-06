@@ -94,6 +94,23 @@ export function useSubscription() {
     // PRO users can always create invoices. Free users check against limit.
     const canCreateInvoice = isPro || (invoiceLimit !== null && invoiceCount < invoiceLimit);
 
+    // Subscription expiration and reminders
+    const expiresAt = subscription?.expiresAt ? new Date(subscription.expiresAt) : null;
+    const daysUntilExpiration = subscription?.daysUntilExpiration ?? 
+        (expiresAt ? Math.ceil((expiresAt - new Date()) / (1000 * 60 * 60 * 24)) : null);
+    
+    // Check if subscription is expired
+    const isExpired = expiresAt ? expiresAt < new Date() : false;
+    
+    // Reminder levels: 7 days, 3 days, 1 day, expired
+    const subscriptionReminder = isPro && expiresAt ? (
+        isExpired ? { level: 'expired', message: 'Your subscription has expired. Please renew to continue using PRO features.' } :
+        daysUntilExpiration <= 1 ? { level: 'critical', message: `Your subscription expires in ${daysUntilExpiration} day(s). Renew now to avoid interruption.` } :
+        daysUntilExpiration <= 3 ? { level: 'warning', message: `Your subscription expires in ${daysUntilExpiration} days. Consider renewing soon.` } :
+        daysUntilExpiration <= 7 ? { level: 'info', message: `Your subscription expires in ${daysUntilExpiration} days.` } :
+        null
+    ) : null;
+
     return {
         plan,
         isPro,
@@ -108,5 +125,9 @@ export function useSubscription() {
         subscription,
         invoiceUsage,
         refreshSubscription, // CRITICAL: Use this to refresh after payment verification
+        expiresAt,
+        daysUntilExpiration,
+        isExpired,
+        subscriptionReminder,
     };
 }

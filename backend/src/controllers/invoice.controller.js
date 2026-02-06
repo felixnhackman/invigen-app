@@ -3,8 +3,9 @@
  * Tracks invoice usage per user (not hardcoded)
  */
 
-import { getInvoiceUsage as getUsageFromStore, incrementInvoiceUsage, setInvoiceLimit } from '../models/invoice-usage.store.js';
-import { getSubscription } from '../models/subscription.store.js';
+// Use Supabase-based stores for production (works on Render)
+import { getInvoiceUsage as getUsageFromStore, incrementInvoiceUsage, setInvoiceLimit } from '../models/invoice-usage.store.supabase.js';
+import { getSubscription } from '../models/subscription.store.supabase.js';
 
 /**
  * PHASE 8.5: Get invoice usage for authenticated user
@@ -23,16 +24,16 @@ export async function getInvoiceUsage(req, res) {
         }
 
         // Get subscription to determine limit
-        const subscription = getSubscription(userId);
+        const subscription = await getSubscription(userId);
         const plan = subscription?.plan || 'free';
         const limit = plan === 'pro' ? Infinity : 10;
 
         // Get usage from store
-        const usage = getUsageFromStore(userId);
+        const usage = await getUsageFromStore(userId);
         
         // Update limit if plan changed
         if (usage.limit !== limit) {
-            setInvoiceLimit(userId, limit);
+            await setInvoiceLimit(userId, limit);
             usage.limit = limit;
         }
 
@@ -71,16 +72,16 @@ export async function createInvoice(req, res) {
         }
 
         // Check subscription plan and usage limits
-        const subscription = getSubscription(userId);
+        const subscription = await getSubscription(userId);
         const plan = subscription?.plan || 'free';
         const limit = plan === 'pro' ? Infinity : 10;
 
         // Get current usage
-        const usage = getUsageFromStore(userId);
+        const usage = await getUsageFromStore(userId);
         
         // Update limit if plan changed
         if (usage.limit !== limit) {
-            setInvoiceLimit(userId, limit);
+            await setInvoiceLimit(userId, limit);
             usage.limit = limit;
         }
 
@@ -93,7 +94,7 @@ export async function createInvoice(req, res) {
         }
 
         // Increment usage count
-        const updatedUsage = incrementInvoiceUsage(userId);
+        const updatedUsage = await incrementInvoiceUsage(userId);
 
         return res.json({
             success: true,
@@ -130,7 +131,7 @@ export async function authorizeDownload(req, res) {
         }
 
         // Check subscription plan
-        const subscription = getSubscription(userId);
+        const subscription = await getSubscription(userId);
         const plan = subscription?.plan || 'free';
         
         if (plan !== 'pro') {
@@ -170,7 +171,7 @@ export async function authorizeEmail(req, res) {
         }
 
         // Check subscription plan
-        const subscription = getSubscription(userId);
+        const subscription = await getSubscription(userId);
         const plan = subscription?.plan || 'free';
         
         if (plan !== 'pro') {
@@ -210,7 +211,7 @@ export async function authorizeWatermarkRemoval(req, res) {
         }
 
         // Check subscription plan
-        const subscription = getSubscription(userId);
+        const subscription = await getSubscription(userId);
         const plan = subscription?.plan || 'free';
         
         if (plan !== 'pro') {

@@ -11,7 +11,7 @@ import {
     pdf,
     Font
 } from "@react-pdf/renderer";
-import { Plus, Trash2, Download, ArrowLeft, ArrowRight, User, Building2, CheckCircle, Palette, Eye, EyeOff, Crown, MessageCircle, Upload, X } from 'lucide-react';
+import { Plus, Trash2, Download, ArrowLeft, ArrowRight, User, Building2, CheckCircle, Palette, Eye, EyeOff, Crown, MessageCircle, Upload, X, Package } from 'lucide-react';
 import hero from '../assets/hero.png';
 import logo2 from '../assets/logo2.png';
 import PoppinsBold from "../fonts/Poppins-Bold.ttf";
@@ -22,7 +22,7 @@ import { NotificationDialog, Toast, useNotification } from './NotificationDialog
 import { useSubscription } from '../hooks/useSubscription';
 import UpgradeModal from './UpgradeModal';
 import { requestDownloadAuth, requestEmailAuth, createInvoice } from '../utils/api';
-import { getBusinessInfo, saveBusinessInfo } from '../lib/supabase';
+import { getBusinessInfo, saveBusinessInfo, getProducts, getWhatsAppMessageTemplate } from '../lib/supabase';
 import emailjs from '@emailjs/browser';
 
 
@@ -439,6 +439,10 @@ const InvoiceGenerator = ({ onFinalDownload, user, setCurrentPage }) => {
     const [sendToPhone, setSendToPhone] = useState('');
     const [logoBase64, setLogoBase64] = useState(logo2);
     const [showPreview, setShowPreview] = useState(false); // PRO feature: Live preview
+    
+    // Product catalog state
+    const [products, setProducts] = useState([]);
+    const [whatsappMessageTemplate, setWhatsappMessageTemplate] = useState('');
 
     // Notification hooks
     const { notification, toast, showNotification, showToast, closeNotification, closeToast } = useNotification();
@@ -476,29 +480,43 @@ const InvoiceGenerator = ({ onFinalDownload, user, setCurrentPage }) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user?.id, user?.email]);
 
-    // PRO Feature: Load saved business info for PRO users
+    // PRO Feature: Load saved business info, products, and WhatsApp template for PRO users
     useEffect(() => {
-        const loadBusinessInfo = async () => {
-            if (!user?.id || !isPro) return;
+        const loadUserData = async () => {
+            if (!user?.id) return;
             
             try {
-                const savedBusinessInfo = await getBusinessInfo(user.id);
-                if (savedBusinessInfo) {
-                    // Auto-fill business info for PRO users
-                    setFormData(prev => ({
-                        ...prev,
-                        businessName: savedBusinessInfo.businessName || prev.businessName,
-                        clientEmail: savedBusinessInfo.businessEmail || prev.clientEmail,
-                        // Add more fields as needed
-                    }));
+                // Load business info for PRO users
+                if (isPro) {
+                    const savedBusinessInfo = await getBusinessInfo(user.id);
+                    if (savedBusinessInfo) {
+                        setFormData(prev => ({
+                            ...prev,
+                            businessName: savedBusinessInfo.businessName || prev.businessName,
+                            clientEmail: savedBusinessInfo.businessEmail || prev.clientEmail,
+                        }));
+                    }
+                }
+                
+                // Load products catalog
+                const userProducts = await getProducts(user.id).catch(() => []);
+                setProducts(userProducts);
+                
+                // Load WhatsApp message template
+                const template = await getWhatsAppMessageTemplate(user.id).catch(() => null);
+                if (template) {
+                    setWhatsappMessageTemplate(template);
+                } else {
+                    // Default template
+                    setWhatsappMessageTemplate('Invoice #{{invoiceNumber}}\nFrom: {{businessName}}\nDate: {{date}}\nTotal: {{total}}\n\nPlease find your invoice attached.');
                 }
             } catch (error) {
-                console.error('Failed to load business info:', error);
-                // Non-critical error - continue without saved info
+                console.error('Failed to load user data:', error);
+                // Non-critical error - continue without saved data
             }
         };
         
-        loadBusinessInfo();
+        loadUserData();
     }, [user?.id, isPro]);
 
     // EmailJS initialization removed - using WhatsApp only
@@ -1606,13 +1624,43 @@ const InvoiceGenerator = ({ onFinalDownload, user, setCurrentPage }) => {
                                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
                                         Invoice Items
                                     </h2>
-                                    <button
-                                        onClick={addItem}
-                                        className="inline-flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg border border-gray-700 transition-all text-sm font-medium"
-                                    >
-                                        <Plus className="w-4 h-4" />
-                                        Add Item
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                        {products.length > 0 && (
+                                            <select
+                                                onChange={(e) => {
+                                                    const productId = e.target.value;
+                                                    if (productId) {
+                                                        const product = products.find(p => p.id === productId);
+                                                        if (product) {
+                                                            addItem();
+                                                            const lastIndex = formData.items.length;
+                                                            setTimeout(() => {
+                                                                updateItem(lastIndex, 'name', product.name);
+                                                                updateItem(lastIndex, 'price', product.price.toString());
+                                                            }, 0);
+                                                        }
+                                                        e.target.value = '';
+                                                    }
+                                                }}
+                                                className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg border border-gray-700 transition-all text-sm font-medium"
+                                                defaultValue=""
+                                            >
+                                                <option value="">Select Product</option>
+                                                {products.map(product => (
+                                                    <option key={product.id} value={product.id}>
+                                                        {product.name} - {product.currency} {parseFloat(product.price).toFixed(2)}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        )}
+                                        <button
+                                            onClick={addItem}
+                                            className="inline-flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg border border-gray-700 transition-all text-sm font-medium"
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                            Add Item
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div className="space-y-4">
@@ -1850,78 +1898,123 @@ const InvoiceGenerator = ({ onFinalDownload, user, setCurrentPage }) => {
                                 )}
                             </div>
 
-                            {/* WhatsApp Section */}
-                            <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-2xl p-6 shadow-xl">
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
-                                        <MessageCircle className="w-6 h-6 text-white" />
+                            {/* WhatsApp Section - PRO Only */}
+                            {isPro ? (
+                                <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-2xl p-6 shadow-xl">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
+                                            <MessageCircle className="w-6 h-6 text-white" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                                Send via WhatsApp
+                                                <Crown className="w-4 h-4 text-yellow-400" />
+                                            </h3>
+                                            <p className="text-sm text-gray-400">
+                                                {formData.clientPhone
+                                                    ? `Default: ${formData.clientPhone}`
+                                                    : "Enter phone number"}
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h3 className="text-lg font-bold text-white">Send via WhatsApp</h3>
-                                        <p className="text-sm text-gray-400">
-                                            {formData.clientPhone
-                                                ? `Default: ${formData.clientPhone}`
-                                                : "Enter phone number"}
-                                        </p>
+                                    <div className="mb-4">
+                                        <input
+                                            type="tel"
+                                            placeholder={formData.clientPhone || "Enter phone number (e.g., +1234567890)"}
+                                            value={sendToPhone}
+                                            onChange={(e) => setSendToPhone(e.target.value)}
+                                            className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+                                        />
                                     </div>
-                                </div>
-                                <div className="mb-4">
-                                    <input
-                                        type="tel"
-                                        placeholder={formData.clientPhone || "Enter phone number (e.g., +1234567890)"}
-                                        value={sendToPhone}
-                                        onChange={(e) => setSendToPhone(e.target.value)}
-                                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
-                                    />
-                                </div>
-                                <button
-                                    onClick={() => {
-                                        const phoneToSend = sendToPhone.trim() || formData.clientPhone;
-                                        if (!phoneToSend) {
+                                    <button
+                                        onClick={async () => {
+                                            const phoneToSend = sendToPhone.trim() || formData.clientPhone;
+                                            if (!phoneToSend) {
+                                                showNotification({
+                                                    type: 'warning',
+                                                    title: 'Phone Number Required',
+                                                    message: 'Please enter a phone number to send via WhatsApp.',
+                                                    autoClose: true,
+                                                    autoCloseDelay: 3000
+                                                });
+                                                return;
+                                            }
+
+                                            // Format phone number (remove spaces, dashes, etc.)
+                                            let formattedPhone = phoneToSend.replace(/[\s\-\(\)]/g, '');
+                                            
+                                            // Ensure phone starts with country code (if not already)
+                                            if (!formattedPhone.startsWith('+')) {
+                                                formattedPhone = '+' + formattedPhone;
+                                            }
+                                            
+                                            // Generate invoice summary message using template
+                                            let message = whatsappMessageTemplate || 
+                                                'Invoice #{{invoiceNumber}}\nFrom: {{businessName}}\nDate: {{date}}\nTotal: {{total}}\n\nPlease find your invoice attached.';
+                                            
+                                            // Replace placeholders
+                                            message = message
+                                                .replace(/\{\{invoiceNumber\}\}/g, formData.invoiceNumber)
+                                                .replace(/\{\{businessName\}\}/g, formData.businessName)
+                                                .replace(/\{\{date\}\}/g, new Date(formData.date).toLocaleDateString())
+                                                .replace(/\{\{total\}\}/g, formatCurrency(calculateBalance(), formData.currency));
+
+                                            // Detect iOS and use appropriate WhatsApp link format
+                                            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                                            
+                                            // For iOS, use api.whatsapp.com format, for others use wa.me
+                                            const whatsappUrl = isIOS
+                                                ? `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${encodeURIComponent(message)}`
+                                                : `https://wa.me/${formattedPhone.replace(/\+/g, '')}?text=${encodeURIComponent(message)}`;
+                                            
+                                            // Open WhatsApp
+                                            window.open(whatsappUrl, '_blank');
+                                            
                                             showNotification({
-                                                type: 'warning',
-                                                title: 'Phone Number Required',
-                                                message: 'Please enter a phone number to send via WhatsApp.',
+                                                type: 'success',
+                                                title: 'Opening WhatsApp',
+                                                message: `WhatsApp is opening for ${phoneToSend}. You can attach the PDF manually.`,
                                                 autoClose: true,
                                                 autoCloseDelay: 3000
                                             });
-                                            return;
-                                        }
-
-                                        // Format phone number (remove spaces, dashes, etc.)
-                                        const formattedPhone = phoneToSend.replace(/[\s\-\(\)]/g, '');
-                                        
-                                        // Generate invoice summary message
-                                        const invoiceSummary = `Invoice #${formData.invoiceNumber}\n` +
-                                            `From: ${formData.businessName}\n` +
-                                            `Date: ${new Date(formData.date).toLocaleDateString()}\n` +
-                                            `Total: ${formatCurrency(calculateBalance(), formData.currency)}\n\n` +
-                                            `Please find your invoice attached.`;
-
-                                        // Create WhatsApp link
-                                        const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(invoiceSummary)}`;
-                                        
-                                        // Open WhatsApp in new tab
-                                        window.open(whatsappUrl, '_blank');
-                                        
-                                        showNotification({
-                                            type: 'success',
-                                            title: 'Opening WhatsApp',
-                                            message: `WhatsApp is opening for ${phoneToSend}. You can attach the PDF manually.`,
-                                            autoClose: true,
-                                            autoCloseDelay: 3000
-                                        });
-                                    }}
-                                    disabled={(!sendToPhone.trim() && !formData.clientPhone)}
-                                    className={`w-full inline-flex items-center justify-center gap-3 px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${(sendToPhone.trim() || formData.clientPhone)
-                                        ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:shadow-xl hover:shadow-green-500/30 transform hover:scale-105'
-                                        : 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                                    }`}
-                                >
-                                    <MessageCircle className="w-5 h-5" />
-                                    Open WhatsApp
-                                </button>
-                            </div>
+                                        }}
+                                        disabled={(!sendToPhone.trim() && !formData.clientPhone)}
+                                        className={`w-full inline-flex items-center justify-center gap-3 px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${(sendToPhone.trim() || formData.clientPhone)
+                                            ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:shadow-xl hover:shadow-green-500/30 transform hover:scale-105'
+                                            : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                                        }`}
+                                    >
+                                        <MessageCircle className="w-5 h-5" />
+                                        Open WhatsApp
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-2xl p-6 shadow-xl opacity-60">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="w-12 h-12 rounded-xl bg-gray-700 flex items-center justify-center">
+                                            <MessageCircle className="w-6 h-6 text-gray-500" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <h3 className="text-lg font-bold text-gray-400 flex items-center gap-2">
+                                                Send via WhatsApp
+                                                <Crown className="w-4 h-4 text-yellow-400" />
+                                            </h3>
+                                            <p className="text-sm text-gray-500">PRO feature - Upgrade to send invoices via WhatsApp</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            setUpgradeFeatureName('WhatsApp sharing');
+                                            setShowUpgradeModal(true);
+                                        }}
+                                        className="w-full inline-flex items-center justify-center gap-3 px-6 py-3 rounded-xl font-semibold bg-gray-700 text-gray-400 cursor-not-allowed"
+                                        disabled
+                                    >
+                                        <MessageCircle className="w-5 h-5" />
+                                        Upgrade to Pro
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
                         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl">

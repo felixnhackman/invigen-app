@@ -3,8 +3,9 @@
  * Uses req.user.email (or id) instead of hardcoded user data
  */
 
-import { getSubscription, setPlan, updateSubscription as updateSubscriptionInStore } from '../models/subscription.store.js';
-import { setInvoiceLimit } from '../models/invoice-usage.store.js';
+// Use Supabase-based stores for production (works on Render)
+import { getSubscription, setPlan, updateSubscription as updateSubscriptionInStore } from '../models/subscription.store.supabase.js';
+import { setInvoiceLimit } from '../models/invoice-usage.store.supabase.js';
 
 // PHASE 8.5: TODO - Replace with actual database queries
 // Currently using in-memory storage - replace with Supabase/PostgreSQL in production
@@ -26,8 +27,8 @@ export async function getMySubscription(req, res) {
             });
         }
 
-        // PHASE 8.5: Get subscription from store (in-memory, replace with database)
-        const subscriptionData = getSubscription(userId);
+        // PHASE 8.5: Get subscription from Supabase database
+        const subscriptionData = await getSubscription(userId);
         
         const subscription = {
             plan: subscriptionData.plan || 'free',
@@ -36,6 +37,10 @@ export async function getMySubscription(req, res) {
             ...subscriptionData,
             // Ensure createdAt exists
             createdAt: subscriptionData.createdAt || new Date().toISOString(),
+            // Calculate days until expiration for PRO users
+            daysUntilExpiration: subscriptionData.expiresAt 
+                ? Math.ceil((new Date(subscriptionData.expiresAt) - new Date()) / (1000 * 60 * 60 * 24))
+                : null,
         };
 
         return res.json(subscription);
@@ -177,8 +182,10 @@ export async function verifyPayment(req, res) {
             });
         }
 
-        // CRITICAL: Update subscription to PRO in store (in-memory, replace with database)
-        const activatedAt = new Date().toISOString();
+        // CRITICAL: Update subscription to PRO in Supabase database
+        const activatedAt = new Date();
+        const expiresAt = new Date(activatedAt);
+        expiresAt.setDate(expiresAt.getDate() + 30); // 30 days from activation
         
         // Store subscription with payment details
         const subscriptionWithPayment = {
@@ -187,15 +194,16 @@ export async function verifyPayment(req, res) {
             userEmail,
             paystackReference: reference,
             paystackCustomerCode: paystackData.data.customer.customer_code,
-            activatedAt,
-            createdAt: activatedAt,
+            activatedAt: activatedAt.toISOString(),
+            expiresAt: expiresAt.toISOString(),
+            createdAt: activatedAt.toISOString(),
         };
         
-        // Update store
-        updateSubscriptionInStore(userId, subscriptionWithPayment);
+        // Update database
+        await updateSubscriptionInStore(userId, subscriptionWithPayment);
         
         // Set invoice limit to unlimited for PRO users
-        setInvoiceLimit(userId, Infinity);
+        await setInvoiceLimit(userId, Infinity);
 
         console.log(`✅ Subscription updated to PRO for user ${userId} (${userEmail})`);
 
