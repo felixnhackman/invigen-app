@@ -173,10 +173,10 @@ const SignupPage = ({ setCurrentPage, onLogin }) => {
                         </button>
 
                         <div className="relative my-6">
-                            <div className="relative flex items-center gap-5">
-                                <div className=" w-full relative flex w-full border-t border-gray-700" />
+                            <div className="relative flex items-center gap-6">
+                                <div className=" w-full relative flex border-t border-gray-700" />
                                 <div className="w-full relative justify-center text-sm">
-                                    <span className="relative flex text-gray-500">Or continue with</span>
+                                    <span className="relative flex items-center justify-center text-center text-gray-500">Or continue with</span>
                                 </div>
                                 <div className="w-full relative flex border-t border-gray-700" />
                             </div>
