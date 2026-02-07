@@ -3,6 +3,8 @@ import { Mail, Lock, User, ArrowRight, UserPlus, Eye, EyeOff } from 'lucide-reac
 import { supabase } from '../lib/supabase';
 import { supabaseUserToAppUser } from '../lib/supabase';
 import ContinueWithGoogle from './ContinueWithGoogle';
+import hero from '../assets/hero.png';
+
 
 const SignupPage = ({ setCurrentPage, onLogin }) => {
     const [name, setName] = useState('');
@@ -58,9 +60,12 @@ const SignupPage = ({ setCurrentPage, onLogin }) => {
     };
 
     return (
-        <section className="min-h-screen pt-28 pb-16 px-4 bg-gray-950 flex items-center justify-center">
-            <div className="w-full max-w-md">
-                <div className="bg-gray-900/80 backdrop-blur border border-gray-800 rounded-2xl p-8 shadow-xl">
+        <section className="min-h-screen pt-28 pb-16 px-4 bg-gray-950 flex items-center justify-center relative min-h-screen  pt-20 bg-cover bg-center tracking-tighter" style={{
+            backgroundImage: `url(${hero})`
+        }}>
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-md"></div>
+            <div className="w-150">
+                <div className="bg-gray-900/80 backdrop-blur border border-gray-800 rounded-2xl p-12 shadow-xl">
                     <div className="text-center mb-8">
                         <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 mb-4">
                             <UserPlus className="w-7 h-7 text-white" />
@@ -190,6 +195,7 @@ const SignupPage = ({ setCurrentPage, onLogin }) => {
                     </p>
                 </div>
             </div>
+
         </section>
     );
 };
