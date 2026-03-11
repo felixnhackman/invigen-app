@@ -1779,7 +1779,7 @@ const InvoiceGenerator = ({ onFinalDownload, user, setCurrentPage }) => {
 
                                 <button
                                     onClick={handleGenerate}
-                                    className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-500 text-white px-8 py-4 rounded-xl text-lg font-semibold hover:shadow-2xl hover:shadow-blue-500/30 transform hover:scale-[1.02] transition-all duration-300 flex items-center justify-center gap-3"
+                                    className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-500 text-white px-6 py-3 rounded-xl text-base font-semibold hover:shadow-xl hover:shadow-blue-500/30 transform hover:scale-[1.01] transition-all duration-300 flex items-center justify-center gap-2"
                                 >
                                     Generate Invoice
                                     <ArrowRight className="w-5 h-5" />

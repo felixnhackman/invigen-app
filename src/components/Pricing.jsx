@@ -40,11 +40,11 @@ const Pricing = ({ setCurrentPage, user }) => {
         {
             id: 'pro',
             name: 'Pro',
-            price: 2,
-            priceDisplay: '₵2',
+            price: 60,
+            priceDisplay: '₵60',
             period: 'per month',
-            yearlyPrice: 20, // PHASE 7.2: Yearly anchor (updated for ₵2)
-            yearlySavings: 4, // PHASE 7.2: Yearly anchor (updated for ₵2)
+            yearlyPrice: 600, // PHASE 7.2: Yearly anchor (updated for ₵60)
+            yearlySavings: 120, // PHASE 7.2: Yearly anchor (updated for ₵60)
             description: 'For professionals and small businesses',
             icon: <Crown className="w-6 h-6" />,
             features: [
